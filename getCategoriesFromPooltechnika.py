@@ -40,8 +40,7 @@ for item in root.findall('SHOPITEM'):
         for category in categories_list:
             key = (category, parent_id)  # Klíčem je tuple (název_kategorie, parent_id)
             if key not in categories:
-                categories[key] = {"id": id_counter, "parent_id": parent_id, "name": category,
-                                   "old_name": category_text_original}
+                categories[key] = {"id": id_counter, "parent_id": parent_id, "name": category, "old_name": category_text_original}
                 id_counter += 1
             parent_id = categories[key]["id"]
     else:
@@ -92,13 +91,11 @@ for (category_name, parent_id), details in categories.items():
     seo_elem = ET.SubElement(seo_optimization_elem, "SEO", attrib={"language": "cs"})
     ET.SubElement(seo_elem, "SEO_URL").text = unidecode(category_name.lower().replace(" ", "-"))
     ET.SubElement(seo_elem, "SEO_TITLE").text = f"{category_name} pro bazény – Skvělý výběr online na Poolzone.cz"
-    ET.SubElement(seo_elem,
-                  "SEO_META_DESCRIPTION").text = f"{category_name} pro bazény. Nabízíme kvalitní produkty za skvělé ceny. Prohlédněte si náš výběr ještě dnes!"
+    ET.SubElement(seo_elem, "SEO_META_DESCRIPTION").text = f"{category_name} pro bazény. Nabízíme kvalitní produkty za skvělé ceny. Prohlédněte si náš výběr ještě dnes!"
 
     # Pridani code_value do categories
     key = (category_name, parent_id)
-    categories[key] = {"id": details["id"], "parent_id": details["parent_id"], "name": category_name,
-                       "old_name": details["old_name"], "code_value": code_value}
+    categories[key] = {"id": details["id"], "parent_id": details["parent_id"], "name": category_name, "old_name": details["old_name"], "code_value": code_value}
 
     # Přidání dat do Excelu
     excel_data.append([

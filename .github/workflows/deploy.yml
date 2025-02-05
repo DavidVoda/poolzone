@@ -1,0 +1,38 @@
+name: Run Python Script and Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set Up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12.4"  # Adjust as needed
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Python Script
+        run: python createProductsForPoolzone.py  # Replace with your script
+
+      - name: Move Output File
+        run: |
+          mkdir -p public
+          mv poolzone_products.xml public/  # Adjust the filename
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: public
+          clean: true
