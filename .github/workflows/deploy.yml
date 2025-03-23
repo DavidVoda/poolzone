@@ -5,6 +5,11 @@ on:
     branches:
       - main
   workflow_dispatch:  # Allows manual triggering
+  schedule:
+    - cron: '0 0 * * *'   # Run at 00:00 UTC
+    - cron: '0 6 * * *'   # Run at 06:00 UTC
+    - cron: '0 12 * * *'  # Run at 12:00 UTC
+    - cron: '0 18 * * *'  # Run at 18:00 UTC
 
 jobs:
   build-and-deploy:
