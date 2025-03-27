@@ -1,11 +1,85 @@
-<p>*Rozpočet prosím berte zatím jako informativní, je stále ve vývoji.</p>
+<h3><strong>Vážení zákazníci,</strong></h3>
+<p>
+  děkujeme za zájem o náš rozpočtový nástroj pro stavbu betonového bazénu s
+  těžkou fóliií. Připravili jsme pro Vás přehled důležitých informací, které se
+  týkají obsahu kalkulace a dalších možných úprav.
+</p>
+<hr />
+<h3><strong>🛠️ 1. Montážní materiál podle umístění technologie</strong></h3>
+<p>
+  V kalkulaci je zahrnuta sada montážního materiálu pro zapojení bazénu nad
+  hladinou vody (např. do domečku, garáže nebo budky).
+</p>
+<p>
+  ✅ Pokud plánujete umístit bazénovou technologii <strong>do šachty</strong>,
+  je nutné tuto sadu vyměnit za
+  <a
+    href="https://www.poolzone.cz/p/p-sada-montazniho-materialu-pro-bazen-do-50m3"
+    >sadu montážního materiálu pro bazén do 50 m³</a
+  >
+  a případně přidat
+  <a href="https://www.poolzone.cz/p/technologicka-sachta-150x120-cm-s-kominkem"
+    >technologickou šachtu 150x120 cm s komínkem</a
+  >.
+</p>
+<p>
+  ✅ <strong>Součástí montážní sady</strong> jsou vždy komponenty pro přípravu
+  na ohřev.
+</p>
+<p>
+  🔎 <strong>K zapojení protiproudu</strong> doporučujeme zakoupit
+  <a
+    href="https://www.poolzone.cz/p/sachta-na-protiproud-120x60x80-cm-doprava-zdarma"
+    >šachtu na protiproud 120x60x80 cm</a
+  >
+  včetně veškerého spojovacího materiálu uvedeného v jejím popisu.
+</p>
+<hr />
+<h3><strong>📐 2. Typ bazénových schodů</strong></h3>
+<p>
+  V naší kalkulaci počítáme s konkrétním typem bazénových schodů. Pro lepší
+  představu jsme připravili nákresy jednotlivých variant, které si můžete
+  prohlédnout a zvolit tu, která nejlépe odpovídá Vašim požadavkům:
+</p>
+<p style="text-align: center"><strong>🔹 Rohové schody</strong></p>
+<p style="text-align: center"><strong>🔹 Rohové schody s lavicí</strong></p>
+<p style="text-align: center"><strong>🔹 Schody přes celou šířku</strong></p>
+<hr />
+<h3><strong>🎁 3. Speciální dárek k Vaší objednávce</strong></h3>
+<p>
+  Pokud si u nás zakoupíte věci z rozpočtu a ponecháte většinu komponentů v
+  objednávce <strong>(nevyřadíte je z košíku)</strong>, získáte od nás jako
+  dárek zdarma:
+</p>
+<p>
+  <strong>🎀 Manuální rakouský vysavač Ocean Vac De Luxe</strong> – včetně
+  kartáče, síťky, hadice a teleskopické tyče, který Vám usnadní údržbu Vašeho
+  nového bazénu.
+</p>
+<h3><strong>🤝 4. Profesionální podpora a know-how zdarma</strong></h3>
+<p>
+  Nejsme pouze e-shop. Vážíme si našich zákazníků a nabízíme Vám naše
+  <strong>know-how</strong>, které jsme nasbírali během téměř
+  <strong>20 let praxe</strong>.
+</p>
+<p>
+  📞 Pokud narazíte na jakýkoli problém během stavby nebo provozu bazénu,
+  neváhejte se na nás obrátit – <strong>rádi Vám poradíme a pomůžeme</strong>.
+</p>
+<hr />
+<p>
+  <strong
+    >Věříme, že Vám naše kalkulace usnadní plánování a realizaci Vašeho
+    vysněného bazénu. Děkujeme, že nám důvěřujete.</strong
+  >
+</p>
 <meta charset="UTF-8" />
 <div class="container">
   <div class="form-step" id="form">
     <!-- Step 1: Depth -->
     <h2>Vyberte hloubku bazénu:</h2>
-    <div id="depthOptions" class="form-group">
-      <div class="custom-control custom-radio custom-control-inline">
+    <div id="depthOptions" class="form-group radio-group-container">
+      <div class="custom-control custom-radio">
         <input
           type="radio"
           id="depth_B1"
@@ -15,7 +89,7 @@
         />
         <label class="custom-control-label" for="depth_B1">125 cm</label>
       </div>
-      <div class="custom-control custom-radio custom-control-inline">
+      <div class="custom-control custom-radio">
         <input
           type="radio"
           id="depth_B2"
@@ -29,37 +103,43 @@
     <!-- Step 2: Pool Size -->
     <div id="poolSizeContainer" class="hidden">
       <h2>Vyberte velikost bazénu:</h2>
-      <div id="poolSizeOptions" class="form-group"></div>
+      <div id="poolSizeOptions" class="form-group radio-group-container"></div>
     </div>
     <!-- Step 3: Fólie variant -->
     <div id="folieContainer" class="hidden">
       <h2>Vyberte barvu fólie:</h2>
-      <div id="folieChoices" class="form-group"></div>
+      <div id="folieChoices" class="form-group radio-group-container"></div>
     </div>
     <!-- Step 4: Protiproud -->
     <div id="protiproudContainer" class="hidden">
       <h2>Vyberte protiproud:</h2>
-      <div id="protiproudChoices" class="form-group"></div>
+      <div
+        id="protiproudChoices"
+        class="form-group radio-group-container"
+      ></div>
     </div>
     <!-- Step 5: Úprava vody -->
     <div id="upravaVodyContainer" class="hidden">
       <h2>Vyberte úpravu vody:</h2>
-      <div id="upravaVodyChoices" class="form-group"></div>
+      <div
+        id="upravaVodyChoices"
+        class="form-group radio-group-container"
+      ></div>
     </div>
     <!-- Step 6: Ohřev vody -->
     <div id="ohrevVodyContainer" class="hidden">
       <h2>Vyberte ohřev vody:</h2>
-      <div id="ohrevVodyChoices" class="form-group"></div>
+      <div id="ohrevVodyChoices" class="form-group radio-group-container"></div>
     </div>
     <!-- Step 7: Osvětlení -->
     <div id="osvetleniContainer" class="hidden">
       <h2>Vyberte osvětlění:</h2>
-      <div id="osvetleniChoices" class="form-group"></div>
+      <div id="osvetleniChoices" class="form-group radio-group-container"></div>
     </div>
     <!-- Step 8: Vstup do bazénu -->
     <div id="vstupContainer" class="hidden">
       <h2>Vyberte vstup do bazénu:</h2>
-      <div id="vstupChoices" class="form-group"></div>
+      <div id="vstupChoices" class="form-group radio-group-container"></div>
     </div>
     <!-- Final Table -->
     <div id="resultsContainer" class="hidden">
@@ -98,10 +178,10 @@
         function showLoading() {
           const loadingHtml = `
         <div id="loadingOverlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 9999;">
-            <div style="background: white; padding: 20px; border-radius: 8px; width: 300px; text-align: center;">
+            <div style="background: white; padding: 20px; border-radius: 8px; width: 300px; height: 250; text-align: center;">
                 <h2>Načítání...</h2>
                 <p>Probíhá přidávání produktů do košíku.</p>
-                <div class="spinner" style="margin: 10px auto; width: 40px; height: 40px; border-radius: 50%; border: 4px solid #283d42; border-top-color: transparent; animation: spin 1s linear infinite;"></div>
+                <div class="spinner" style="margin: 10px auto; width: 40px; height: 40px; border-radius: 50%; border: 4px solid #9ca0a3; border-top-color: transparent; animation: spin 1s linear infinite;"></div>
                 <style>
                     @keyframes spin { 100% { transform: rotate(360deg); } }
                 </style>
@@ -170,7 +250,7 @@
           // Vytvoření modálního okna pro potvrzení
           const modalHtml = `
         <div id="customAlert" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 9999;">
-            <div style="background: white; padding: 20px; border-radius: 8px; width: 300px; text-align: center;">
+            <div style="background: white; padding: 20px; border-radius: 8px; width: 300px; height: 250; text-align: center;">
                 <h2>Výborně!</h2>
                 <p>Všechny produkty byly přidány do košíku.</p>
                 <button onclick="window.location.href = 'https://www.poolzone.cz/cart';" class="btn fg bg-se btn-xl order-md-1 mb-4 mr-md-0 px-5">Přesunout do košíku</button>
@@ -337,8 +417,8 @@
               optionName: "Manuální solonizační jednotka (slaná voda)",
               products: [
                 {
-                  productId: 37732,
-                  link: "https://www.poolzone.cz/p/minisalt-nps-8-40-do-30m3",
+                  productId: 37731,
+                  link: "https://www.poolzone.cz/p/minisalt-nps-4-20-do-15m3",
                   quantity: 1,
                 },
                 {
@@ -403,8 +483,8 @@
               optionName: "Tepelné čerpadlo",
               products: [
                 {
-                  productId: 38934,
-                  link: "https://www.poolzone.cz/p/tepelne-cerpadlo-mr-silence-pro-7kw-10-25m3",
+                  productId: 37632,
+                  link: "https://www.poolzone.cz/p/tepelne-cerpadlo-fuego-5-6kw",
                   quantity: 1,
                 },
               ],
@@ -687,8 +767,8 @@
               optionName: "Manuální solonizační jednotka (slaná voda)",
               products: [
                 {
-                  productId: 37732,
-                  link: "https://www.poolzone.cz/p/minisalt-nps-8-40-do-30m3",
+                  productId: 37349,
+                  link: "https://www.poolzone.cz/p/solonizacni-jednotka-zelia-zlt-25",
                   quantity: 1,
                 },
                 {
@@ -1399,8 +1479,8 @@
               optionName: "Manuální solonizační jednotka (slaná voda)",
               products: [
                 {
-                  productId: 37733,
-                  link: "https://www.poolzone.cz/p/minisalt-nps-12-60-do-60m3",
+                  productId: 37732,
+                  link: "https://www.poolzone.cz/p/minisalt-nps-8-40-do-30m3",
                   quantity: 1,
                 },
                 {
@@ -2105,8 +2185,8 @@
               optionName: "Manuální solonizační jednotka (slaná voda)",
               products: [
                 {
-                  productId: 37733,
-                  link: "https://www.poolzone.cz/p/minisalt-nps-12-60-do-60m3",
+                  productId: 37349,
+                  link: "https://www.poolzone.cz/p/solonizacni-jednotka-zelia-zlt-25",
                   quantity: 1,
                 },
                 {
@@ -2456,7 +2536,7 @@
               products: [
                 {
                   productId: 37732,
-                  link: "https://www.poolzone.cz/p/minisalt-nps-12-60-do-60m3",
+                  link: "https://www.poolzone.cz/p/minisalt-nps-8-40-do-30m3",
                   quantity: 1,
                 },
                 {
@@ -3167,8 +3247,8 @@
               optionName: "Manuální solonizační jednotka (slaná voda)",
               products: [
                 {
-                  productId: 37733,
-                  link: "https://www.poolzone.cz/p/minisalt-nps-12-60-do-60m3",
+                  productId: 37590,
+                  link: "https://www.poolzone.cz/p/solonizacni-jednotka-zelia-zlt-50",
                   quantity: 1,
                 },
                 {
@@ -3901,7 +3981,7 @@
           poolSizesData[selectedDepth].forEach((opt) => {
             poolSizeOptions.insertAdjacentHTML(
               "beforeend",
-              `<div class="custom-control custom-radio custom-control-inline">
+              `<div class="custom-control custom-radio">
                    <input type="radio" id="poolSize_${opt.value}" name="poolSize" class="custom-control-input" value="${opt.value}">
                    <label class="custom-control-label" for="poolSize_${opt.value}">${opt.label}</label>
                  </div>`
@@ -3934,7 +4014,7 @@
         const fv = folieVariants[key];
         folieChoices.insertAdjacentHTML(
           "beforeend",
-          `<div class="custom-control custom-radio custom-control-inline">
+          `<div class="custom-control custom-radio">
                <input type="radio" id="folie_${key}" name="folieVariant" class="custom-control-input" value="${key}">
                <label class="custom-control-label" for="folie_${key}">${fv.name}</label>
              </div>`
@@ -3966,7 +4046,7 @@
         let html = "";
         Object.keys(protiproudBase.options).forEach((key) => {
           const opt = protiproudBase.options[key];
-          html += `<div class="custom-control custom-radio custom-control-inline">
+          html += `<div class="custom-control custom-radio">
                        <input type="radio" id="protiproud_${key}" name="protiproudVariant" class="custom-control-input" value="${key}">
                        <label class="custom-control-label" for="protiproud_${key}">${opt.optionName}</label>
                      </div>`;
@@ -4002,7 +4082,7 @@
         let html = "";
         Object.keys(upravaVodyBase.options).forEach((key) => {
           const opt = upravaVodyBase.options[key];
-          html += `<div class="custom-control custom-radio custom-control-inline">
+          html += `<div class="custom-control custom-radio">
                        <input type="radio" id="upravaVody_${key}" name="upravaVodyVariant" class="custom-control-input" value="${key}">
                        <label class="custom-control-label" for="upravaVody_${key}">${opt.optionName}</label>
                      </div>`;
@@ -4038,7 +4118,7 @@
         let html = "";
         Object.keys(ohrevVodyBase.options).forEach((key) => {
           const opt = ohrevVodyBase.options[key];
-          html += `<div class="custom-control custom-radio custom-control-inline">
+          html += `<div class="custom-control custom-radio">
                        <input type="radio" id="ohrevVody_${key}" name="ohrevVodyVariant" class="custom-control-input" value="${key}">
                        <label class="custom-control-label" for="ohrevVody_${key}">${opt.optionName}</label>
                      </div>`;
@@ -4074,7 +4154,7 @@
         let html = "";
         Object.keys(osvetleniBase.options).forEach((key) => {
           const opt = osvetleniBase.options[key];
-          html += `<div class="custom-control custom-radio custom-control-inline">
+          html += `<div class="custom-control custom-radio">
                        <input type="radio" id="osvetleni_${key}" name="osvetleniVariant" class="custom-control-input" value="${key}">
                        <label class="custom-control-label" for="osvetleni_${key}">${opt.optionName}</label>
                      </div>`;
@@ -4451,7 +4531,7 @@
         let html = "";
         Object.keys(vstupBase.options).forEach((key) => {
           const opt = vstupBase.options[key];
-          html += `<div class="custom-control custom-radio custom-control-inline">
+          html += `<div class="custom-control custom-radio">
                        <input type="radio" id="vstup_${key}" name="vstupVariant" class="custom-control-input" value="${key}">
                        <label class="custom-control-label" for="vstup_${key}">${opt.optionName}</label>
                      </div>`;
@@ -4730,7 +4810,10 @@
           const updatedFolie = Object.assign(
             {},
             folieVariants[chosenFolieKey],
-            { quantity: folieRow.quantity, name: folieRow.name }
+            {
+              quantity: folieRow.quantity,
+              name: folieRow.name,
+            }
           );
           tableData = tableData.map((item) =>
             item.name === "Fólie - běžné metry" ? updatedFolie : item
