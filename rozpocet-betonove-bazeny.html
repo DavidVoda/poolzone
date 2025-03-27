@@ -1,0 +1,4768 @@
+<p>*Rozpočet prosím berte zatím jako informativní, je stále ve vývoji.</p>
+<meta charset="UTF-8" />
+<div class="container">
+  <div class="form-step" id="form">
+    <!-- Step 1: Depth -->
+    <h2>Vyberte hloubku bazénu:</h2>
+    <div id="depthOptions" class="form-group">
+      <div class="custom-control custom-radio custom-control-inline">
+        <input
+          type="radio"
+          id="depth_B1"
+          name="depth"
+          class="custom-control-input"
+          value="B1"
+        />
+        <label class="custom-control-label" for="depth_B1">125 cm</label>
+      </div>
+      <div class="custom-control custom-radio custom-control-inline">
+        <input
+          type="radio"
+          id="depth_B2"
+          name="depth"
+          class="custom-control-input"
+          value="B2"
+        />
+        <label class="custom-control-label" for="depth_B2">150 cm</label>
+      </div>
+    </div>
+    <!-- Step 2: Pool Size -->
+    <div id="poolSizeContainer" class="hidden">
+      <h2>Vyberte velikost bazénu:</h2>
+      <div id="poolSizeOptions" class="form-group"></div>
+    </div>
+    <!-- Step 3: Fólie variant -->
+    <div id="folieContainer" class="hidden">
+      <h2>Vyberte barvu fólie:</h2>
+      <div id="folieChoices" class="form-group"></div>
+    </div>
+    <!-- Step 4: Protiproud -->
+    <div id="protiproudContainer" class="hidden">
+      <h2>Vyberte protiproud:</h2>
+      <div id="protiproudChoices" class="form-group"></div>
+    </div>
+    <!-- Step 5: Úprava vody -->
+    <div id="upravaVodyContainer" class="hidden">
+      <h2>Vyberte úpravu vody:</h2>
+      <div id="upravaVodyChoices" class="form-group"></div>
+    </div>
+    <!-- Step 6: Ohřev vody -->
+    <div id="ohrevVodyContainer" class="hidden">
+      <h2>Vyberte ohřev vody:</h2>
+      <div id="ohrevVodyChoices" class="form-group"></div>
+    </div>
+    <!-- Step 7: Osvětlení -->
+    <div id="osvetleniContainer" class="hidden">
+      <h2>Vyberte osvětlění:</h2>
+      <div id="osvetleniChoices" class="form-group"></div>
+    </div>
+    <!-- Step 8: Vstup do bazénu -->
+    <div id="vstupContainer" class="hidden">
+      <h2>Vyberte vstup do bazénu:</h2>
+      <div id="vstupChoices" class="form-group"></div>
+    </div>
+    <!-- Final Table -->
+    <div id="resultsContainer" class="hidden">
+      <h2 id="resultHeader"></h2>
+      <div id="tableContainer" style="position: relative">
+        <div id="snippet-products-productList"></div>
+      </div>
+      <script>
+        function updateTotalPrice() {
+          let totalPrice = 0;
+          document.querySelectorAll(".SNIitem").forEach((el) => {
+            let priceEl = el.querySelector(".pit-price");
+            let quantityInput = el.querySelector(".pit-quantity input");
+
+            let price = parseFloat(
+              priceEl?.innerText.replace(/[^0-9,.]/g, "").replace(",", ".") || 0
+            );
+            let quantity = parseFloat(
+              quantityInput?.value.replace(",", ".") || 1
+            );
+
+            totalPrice += price * quantity;
+          });
+
+          // Formátování částky
+          let formattedPrice = new Intl.NumberFormat("cs-CZ", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+          }).format(totalPrice);
+
+          document.getElementById(
+            "totalPrice"
+          ).innerText = `${formattedPrice} Kč`;
+        }
+
+        function showLoading() {
+          const loadingHtml = `
+        <div id="loadingOverlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 9999;">
+            <div style="background: white; padding: 20px; border-radius: 8px; width: 300px; text-align: center;">
+                <h2>Načítání...</h2>
+                <p>Probíhá přidávání produktů do košíku.</p>
+                <div class="spinner" style="margin: 10px auto; width: 40px; height: 40px; border-radius: 50%; border: 4px solid #283d42; border-top-color: transparent; animation: spin 1s linear infinite;"></div>
+                <style>
+                    @keyframes spin { 100% { transform: rotate(360deg); } }
+                </style>
+            </div>
+        </div>
+    `;
+          document.body.insertAdjacentHTML("beforeend", loadingHtml);
+        }
+
+        function hideLoading() {
+          const loadingOverlay = document.getElementById("loadingOverlay");
+          if (loadingOverlay) loadingOverlay.remove();
+        }
+
+        async function addAllToCart() {
+          let baseUrl =
+            "https://www.poolzone.cz/pro-stavbu-betonoveho-bazenu-s-tezkou-folii?do=addCart";
+          let requests = [];
+
+          showLoading();
+
+          document.querySelectorAll(".SNIitem").forEach((el) => {
+            let productId = el.getAttribute("data-product-id");
+            let quantityInput = el.querySelector(".pit-quantity input");
+            let quantity = parseFloat(
+              quantityInput?.value.replace(",", ".") || 1
+            );
+
+            if (productId) {
+              let url = `${baseUrl}&product_id=${productId}&quantity=${quantity}&option_set_id=`;
+
+              let headers = {
+                accept: "application/json, text/javascript, */*; q=0.01",
+                "accept-language": navigator.language || "cs-CZ",
+                credentials: "include",
+              };
+
+              // Dynamicky doplníme User-Agent data, pokud jsou dostupná
+              if (navigator.userAgentData) {
+                headers["sec-ch-ua"] = navigator.userAgentData.brands
+                  .map((b) => `"${b.brand}";v="${b.version}"`)
+                  .join(", ");
+                headers["sec-ch-ua-mobile"] = navigator.userAgentData.mobile
+                  ? "?1"
+                  : "?0";
+                headers[
+                  "sec-ch-ua-platform"
+                ] = `"${navigator.userAgentData.platform}"`;
+              } else {
+                headers["User-Agent"] = navigator.userAgent;
+              }
+
+              // Přidání dalších bezpečnostních hlaviček
+              headers["sec-fetch-dest"] = "empty";
+              headers["sec-fetch-mode"] = "cors";
+              headers["sec-fetch-site"] = "same-origin";
+              headers["x-requested-with"] = "XMLHttpRequest";
+
+              requests.push(fetch(url, { method: "GET", headers }));
+            }
+          });
+
+          await Promise.all(requests);
+          hideLoading();
+
+          // Vytvoření modálního okna pro potvrzení
+          const modalHtml = `
+        <div id="customAlert" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 9999;">
+            <div style="background: white; padding: 20px; border-radius: 8px; width: 300px; text-align: center;">
+                <h2>Výborně!</h2>
+                <p>Všechny produkty byly přidány do košíku.</p>
+                <button onclick="window.location.href = 'https://www.poolzone.cz/cart';" class="btn fg bg-se btn-xl order-md-1 mb-4 mr-md-0 px-5">Přesunout do košíku</button>
+            </div>
+        </div>
+    `;
+
+          document.body.insertAdjacentHTML("beforeend", modalHtml);
+        }
+
+        // Sledování změn v DOM (přidání/odebrání produktů, změna množství)
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (
+              mutation.type === "childList" ||
+              mutation.type === "attributes"
+            ) {
+              updateTotalPrice();
+            }
+          });
+        });
+
+        // Cílový prvek pro sledování
+        const productList = document.getElementById(
+          "snippet-products-productList"
+        );
+        if (productList) {
+          observer.observe(productList, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+          });
+        }
+
+        // Sledování změn hodnoty v inputu množství (funguje i pro dynamicky přidané produkty)
+        document.addEventListener("input", (event) => {
+          if (event.target.matches(".pit-quantity input")) {
+            updateTotalPrice();
+          }
+        });
+      </script>
+      <!-- Overall price and add all to cart-->
+      <div id="summaryContainer" style="margin-top: 20px">
+        <h3>Celková cena: <span id="totalPrice">0 Kč</span></h3>
+        <button
+          onclick="addAllToCart()"
+          class="btn fg bg-se btn-xl order-md-1 mb-4 mr-md-0 px-5"
+        >
+          Přidat vše do košíku
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<p>
+  <script>
+    /* ----- Data (DO NOT MODIFY) ----- */
+    const originalResultsData = {
+      C1: [
+        {
+          name: "Tvárnice",
+          productId: 38918,
+          link: "https://www.poolzone.cz/p/sada-polystyrenovych-tvarnic-pro-stavbu-bazenu-3x4m",
+          quantity: 1,
+        },
+        {
+          name: "Čerpadlo",
+          productId: 37115,
+          link: "https://www.poolzone.cz/p/cerpadlo-espa-nox-33-8m-iris-500",
+          quantity: 1,
+        },
+        {
+          name: "Filtrace",
+          productId: 36514,
+          link: "https://www.poolzone.cz/p/filtracni-nadoba-top-400-6m3-hod-35kg-pisku",
+          quantity: 1,
+        },
+        {
+          name: "Písek",
+          productId: 35573,
+          link: "https://www.poolzone.cz/p/kremicity-pisek-0-3-0-8-25-kg",
+          quantity: 2,
+        },
+        {
+          name: "Spojovací materiál",
+          productId: 38955,
+          link: "https://www.poolzone.cz/p/sada-montazniho-materialu-pro-bazen-do-50m3-technologie-nad-urovni-vody",
+          quantity: 1,
+        },
+        {
+          name: "Technologie pro osazení",
+          productId: 38930,
+          link: "https://www.poolzone.cz/p/sada-technologickych-prvku-pro-osazeni-betonoveho-bazenu-do-25-m3",
+          quantity: 1,
+        },
+        {
+          name: "Fólie - běžné metry",
+          quantity: 24,
+        },
+        {
+          name: "Plech vnější",
+          productId: 36899,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+          quantity: 8,
+        },
+        {
+          name: "Plech vnitřní",
+          productId: 36900,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+          quantity: 4,
+        },
+        {
+          name: "Geotextilie",
+          productId: 37177,
+          link: "https://www.poolzone.cz/p/geotextilie-300-g-m2-bal-50bm-s-protiplisnovou-upravou-cerna-zazehlena",
+          quantity: 1,
+        },
+        {
+          name: "Protiproud",
+          hidden: true,
+          options: {
+            H1: {
+              optionName: "Bez protiproudu",
+              hidden: true,
+            },
+            H2: {
+              optionName: "65 m3/hod",
+              productId: 37721,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-65m3-h-2-5-kw-400v",
+              quantity: 1,
+            },
+            H3: {
+              optionName: "78 m3/hod",
+              productId: 37722,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-78m3-h-3-0-kw-400v",
+              quantity: 1,
+            },
+          },
+        },
+        {
+          name: "Úprava vody",
+          hidden: true,
+          options: {
+            G1: {
+              optionName: "Bez úpravy vody",
+              hidden: true,
+            },
+            G2: {
+              optionName: "UV lampa",
+              products: [
+                {
+                  productId: 37301,
+                  link: "https://www.poolzone.cz/p/uv-c-lampa-pool-basic-40w-philips",
+                  quantity: 1,
+                },
+                {
+                  productId: 36058,
+                  link: "https://www.poolzone.cz/p/redukce-kratka-d63-50-pn16-pvc",
+                  quantity: 2,
+                },
+              ],
+            },
+            G3: {
+              optionName: "Manuální solonizační jednotka (slaná voda)",
+              products: [
+                {
+                  productId: 37732,
+                  link: "https://www.poolzone.cz/p/minisalt-nps-8-40-do-30m3",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 3,
+                },
+              ],
+            },
+            G4: {
+              optionName:
+                "Automatická solonizační jednotka s dávkováním pH (slaná voda)",
+              products: [
+                {
+                  productId: 38516,
+                  link: "https://www.poolzone.cz/p/solonizacni-jednotka-mr-pure-premium-mps14-ph-rx-orp",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 3,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+              ],
+            },
+            G5: {
+              optionName: "Automatický dávkovač chlóru a pH",
+              products: [
+                {
+                  productId: 38019,
+                  link: "https://www.poolzone.cz/p/automaticka-regulace-ph-a-rx-propilot-duo-davkovani-ph-cl",
+                  quantity: 1,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+                {
+                  productId: 36199,
+                  link: "https://www.poolzone.cz/p/profipool-chlor-tekuty-stabilizovany-25kg",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Ohřev vody",
+          hidden: true,
+          options: {
+            F1: {
+              optionName: "Bez ohřevu vody",
+              hidden: true,
+            },
+            F2: {
+              optionName: "Tepelné čerpadlo",
+              products: [
+                {
+                  productId: 38934,
+                  link: "https://www.poolzone.cz/p/tepelne-cerpadlo-mr-silence-pro-7kw-10-25m3",
+                  quantity: 1,
+                },
+              ],
+            },
+            F3: {
+              optionName: "Tepelný výměník",
+              products: [
+                {
+                  productId: 36722,
+                  link: "https://www.poolzone.cz/p/titanovy-vymenik-elecro-g2-49kw",
+                  quantity: 1,
+                },
+              ],
+            },
+            F4: {
+              optionName: "Elektrický ohřev",
+              products: [
+                {
+                  productId: 37569,
+                  link: "https://www.poolzone.cz/p/elecro-evolution2-6kw-400v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Osvětlení",
+          hidden: true,
+          options: {
+            E1: {
+              optionName: "Bez světla",
+              hidden: true,
+            },
+            E2: {
+              optionName: "Jedno bílé světlo",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E3: {
+              optionName: "Dvě bílá světla",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E4: {
+              optionName: "Jedno barevné světlo",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E5: {
+              optionName: "Dvě barevná světla",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Vstup do bazénu",
+          hidden: true,
+          options: {
+            D1: {
+              optionName: "Bez vstupu",
+              hidden: true,
+            },
+            D2: {
+              optionName: "Nerezový žebřík",
+              products: [
+                {
+                  productId: 36591,
+                  link: "https://www.poolzone.cz/p/schody-muro-luxe-3-st-aisi-316",
+                  quantity: 1,
+                },
+              ],
+            },
+            D3: {
+              optionName: "Rohové schody",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 4,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 1,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 4.5,
+                },
+              ],
+            },
+            D4: {
+              optionName: "Rohové schody s lavicí",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 5,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 6,
+                },
+              ],
+            },
+            D5: {
+              optionName: "Schody přes celou šířku",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 6,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 3.5,
+                },
+              ],
+            },
+          },
+        },
+      ],
+      C2: [
+        {
+          name: "Tvárnice",
+          productId: 38921,
+          link: "https://www.poolzone.cz/p/sada-polystyrenovych-tvarnic-pro-stavbu-bazenu-3x5x1-25m",
+          quantity: 1,
+        },
+        {
+          name: "Čerpadlo",
+          productId: 37115,
+          link: "https://www.poolzone.cz/p/cerpadlo-espa-nox-33-8m-iris-500",
+          quantity: 1,
+        },
+        {
+          name: "Filtrace",
+          productId: 36514,
+          link: "https://www.poolzone.cz/p/filtracni-nadoba-top-400-6m3-hod-35kg-pisku",
+          quantity: 1,
+        },
+        {
+          name: "Písek",
+          productId: 35573,
+          link: "https://www.poolzone.cz/p/kremicity-pisek-0-3-0-8-25-kg",
+          quantity: 2,
+        },
+        {
+          name: "Spojovací materiál",
+          productId: 38955,
+          link: "https://www.poolzone.cz/p/sada-montazniho-materialu-pro-bazen-do-50m3-technologie-nad-urovni-vody",
+          quantity: 1,
+        },
+        {
+          name: "Technologie pro osazení",
+          productId: 38930,
+          link: "https://www.poolzone.cz/p/sada-technologickych-prvku-pro-osazeni-betonoveho-bazenu-do-25-m3",
+          quantity: 1,
+        },
+        {
+          name: "Fólie - běžné metry",
+          quantity: 28,
+        },
+        {
+          name: "Plech vnější",
+          productId: 36899,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+          quantity: 9,
+        },
+        {
+          name: "Plech vnitřní",
+          productId: 36900,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+          quantity: 4,
+        },
+        {
+          name: "Geotextilie",
+          productId: 37177,
+          link: "https://www.poolzone.cz/p/geotextilie-300-g-m2-bal-50bm-s-protiplisnovou-upravou-cerna-zazehlena",
+          quantity: 1,
+        },
+        {
+          name: "Protiproud",
+          hidden: true,
+          options: {
+            H1: {
+              optionName: "Bez protiproudu",
+              hidden: true,
+            },
+            H2: {
+              optionName: "65 m3/hod",
+              productId: 37721,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-65m3-h-2-5-kw-400v",
+              quantity: 1,
+            },
+            H3: {
+              optionName: "78 m3/hod",
+              productId: 37722,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-78m3-h-3-0-kw-400v",
+              quantity: 1,
+            },
+          },
+        },
+        {
+          name: "Úprava vody",
+          hidden: true,
+          options: {
+            G1: {
+              optionName: "Bez úpravy vody",
+              hidden: true,
+            },
+            G2: {
+              optionName: "UV lampa",
+              products: [
+                {
+                  productId: 37301,
+                  link: "https://www.poolzone.cz/p/uv-c-lampa-pool-basic-40w-philips",
+                  quantity: 1,
+                },
+                {
+                  productId: 36058,
+                  link: "https://www.poolzone.cz/p/redukce-kratka-d63-50-pn16-pvc",
+                  quantity: 2,
+                },
+              ],
+            },
+            G3: {
+              optionName: "Manuální solonizační jednotka (slaná voda)",
+              products: [
+                {
+                  productId: 37732,
+                  link: "https://www.poolzone.cz/p/minisalt-nps-8-40-do-30m3",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 4,
+                },
+              ],
+            },
+            G4: {
+              optionName:
+                "Automatická solonizační jednotka s dávkováním pH (slaná voda)",
+              products: [
+                {
+                  productId: 38516,
+                  link: "https://www.poolzone.cz/p/solonizacni-jednotka-mr-pure-premium-mps14-ph-rx-orp",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 4,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+              ],
+            },
+            G5: {
+              optionName: "Automatický dávkovač chlóru a pH",
+              products: [
+                {
+                  productId: 38019,
+                  link: "https://www.poolzone.cz/p/automaticka-regulace-ph-a-rx-propilot-duo-davkovani-ph-cl",
+                  quantity: 1,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+                {
+                  productId: 36199,
+                  link: "https://www.poolzone.cz/p/profipool-chlor-tekuty-stabilizovany-25kg",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Ohřev vody",
+          hidden: true,
+          options: {
+            F1: {
+              optionName: "Bez ohřevu vody",
+              hidden: true,
+            },
+            F2: {
+              optionName: "Tepelné čerpadlo",
+              products: [
+                {
+                  productId: 38934,
+                  link: "https://www.poolzone.cz/p/tepelne-cerpadlo-mr-silence-pro-7kw-10-25m3",
+                  quantity: 1,
+                },
+              ],
+            },
+            F3: {
+              optionName: "Tepelný výměník",
+              products: [
+                {
+                  productId: 36722,
+                  link: "https://www.poolzone.cz/p/titanovy-vymenik-elecro-g2-49kw",
+                  quantity: 1,
+                },
+              ],
+            },
+            F4: {
+              optionName: "Elektrický ohřev",
+              products: [
+                {
+                  productId: 37569,
+                  link: "https://www.poolzone.cz/p/elecro-evolution2-6kw-400v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Osvětlení",
+          hidden: true,
+          options: {
+            E1: {
+              optionName: "Bez světla",
+              hidden: true,
+            },
+            E2: {
+              optionName: "Jedno bílé světlo",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E3: {
+              optionName: "Dvě bílá světla",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E4: {
+              optionName: "Jedno barevné světlo",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E5: {
+              optionName: "Dvě barevná světla",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Vstup do bazénu",
+          hidden: true,
+          options: {
+            D1: {
+              optionName: "Bez vstupu",
+              hidden: true,
+            },
+            D2: {
+              optionName: "Nerezový žebřík",
+              products: [
+                {
+                  productId: 36591,
+                  link: "https://www.poolzone.cz/p/schody-muro-luxe-3-st-aisi-316",
+                  quantity: 1,
+                },
+              ],
+            },
+            D3: {
+              optionName: "Rohové schody",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 4,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 4.5,
+                },
+              ],
+            },
+            D4: {
+              optionName: "Rohové schody s lavicí",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 5,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 6,
+                },
+              ],
+            },
+            D5: {
+              optionName: "Schody přes celou šířku",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 6,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 3.5,
+                },
+              ],
+            },
+          },
+        },
+      ],
+      C3: [
+        {
+          name: "Tvárnice",
+          productId: 38923,
+          link: "https://www.poolzone.cz/p/sada-polystyrenovych-tvarnic-pro-stavbu-bazenu-3x6x1-25m",
+          quantity: 1,
+        },
+        {
+          name: "Čerpadlo",
+          productId: 37116,
+          link: "https://www.poolzone.cz/p/cerpadlo-espa-nox-50-12m-iris-750",
+          quantity: 1,
+        },
+        {
+          name: "Filtrace",
+          productId: 37293,
+          link: "https://www.poolzone.cz/p/nadoba-top-vf-450-75kg-pisku",
+          quantity: 1,
+        },
+        {
+          name: "Písek",
+          productId: 35573,
+          link: "https://www.poolzone.cz/p/kremicity-pisek-0-3-0-8-25-kg",
+          quantity: 3,
+        },
+        {
+          name: "Spojovací materiál",
+          productId: 38955,
+          link: "https://www.poolzone.cz/p/sada-montazniho-materialu-pro-bazen-do-50m3-technologie-nad-urovni-vody",
+          quantity: 1,
+        },
+        {
+          name: "Technologie pro osazení",
+          productId: 38930,
+          link: "https://www.poolzone.cz/p/sada-technologickych-prvku-pro-osazeni-betonoveho-bazenu-do-25-m3",
+          quantity: 1,
+        },
+        {
+          name: "Fólie - běžné metry",
+          quantity: 31,
+        },
+        {
+          name: "Plech vnější",
+          productId: 36899,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+          quantity: 10,
+        },
+        {
+          name: "Plech vnitřní",
+          productId: 36900,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+          quantity: 4,
+        },
+        {
+          name: "Geotextilie",
+          productId: 37177,
+          link: "https://www.poolzone.cz/p/geotextilie-300-g-m2-bal-50bm-s-protiplisnovou-upravou-cerna-zazehlena",
+          quantity: 1,
+        },
+        {
+          name: "Protiproud",
+          hidden: true,
+          options: {
+            H1: {
+              optionName: "Bez protiproudu",
+              hidden: true,
+            },
+            H2: {
+              optionName: "65 m3/hod",
+              productId: 37721,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-65m3-h-2-5-kw-400v",
+              quantity: 1,
+            },
+            H3: {
+              optionName: "78 m3/hod",
+              productId: 37722,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-78m3-h-3-0-kw-400v",
+              quantity: 1,
+            },
+            H4: {
+              optionName: "88 m3/hod",
+              productId: 37723,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-88m3-h-3-5-kw-400v",
+              quantity: 1,
+            },
+          },
+        },
+        {
+          name: "Úprava vody",
+          hidden: true,
+          options: {
+            G1: {
+              optionName: "Bez úpravy vody",
+              hidden: true,
+            },
+            G2: {
+              optionName: "UV lampa",
+              products: [
+                {
+                  productId: 37301,
+                  link: "https://www.poolzone.cz/p/uv-c-lampa-pool-basic-40w-philips",
+                  quantity: 1,
+                },
+                {
+                  productId: 36058,
+                  link: "https://www.poolzone.cz/p/redukce-kratka-d63-50-pn16-pvc",
+                  quantity: 2,
+                },
+              ],
+            },
+            G3: {
+              optionName: "Manuální solonizační jednotka (slaná voda)",
+              products: [
+                {
+                  productId: 37732,
+                  link: "https://www.poolzone.cz/p/minisalt-nps-8-40-do-30m3",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 4,
+                },
+              ],
+            },
+            G4: {
+              optionName:
+                "Automatická solonizační jednotka s dávkováním pH (slaná voda)",
+              products: [
+                {
+                  productId: 38516,
+                  link: "https://www.poolzone.cz/p/solonizacni-jednotka-mr-pure-premium-mps14-ph-rx-orp",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 4,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+              ],
+            },
+            G5: {
+              optionName: "Automatický dávkovač chlóru a pH",
+              products: [
+                {
+                  productId: 38019,
+                  link: "https://www.poolzone.cz/p/automaticka-regulace-ph-a-rx-propilot-duo-davkovani-ph-cl",
+                  quantity: 1,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+                {
+                  productId: 36199,
+                  link: "https://www.poolzone.cz/p/profipool-chlor-tekuty-stabilizovany-25kg",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Ohřev vody",
+          hidden: true,
+          options: {
+            F1: {
+              optionName: "Bez ohřevu vody",
+              hidden: true,
+            },
+            F2: {
+              optionName: "Tepelné čerpadlo",
+              products: [
+                {
+                  productId: 38935,
+                  link: "https://www.poolzone.cz/p/tepelne-cerpadlo-mr-silence-pro-9kw-15-30m3",
+                  quantity: 1,
+                },
+              ],
+            },
+            F3: {
+              optionName: "Tepelný výměník",
+              products: [
+                {
+                  productId: 36722,
+                  link: "https://www.poolzone.cz/p/titanovy-vymenik-elecro-g2-49kw",
+                  quantity: 1,
+                },
+              ],
+            },
+            F4: {
+              optionName: "Elektrický ohřev",
+              products: [
+                {
+                  productId: 37570,
+                  link: "https://www.poolzone.cz/p/elecro-evolution2-9kw-400v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Osvětlení",
+          hidden: true,
+          options: {
+            E1: {
+              optionName: "Bez světla",
+              hidden: true,
+            },
+            E2: {
+              optionName: "Jedno bílé světlo",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E3: {
+              optionName: "Dvě bílá světla",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E4: {
+              optionName: "Jedno barevné světlo",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E5: {
+              optionName: "Dvě barevná světla",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Vstup do bazénu",
+          hidden: true,
+          options: {
+            D1: {
+              optionName: "Bez vstupu",
+              hidden: true,
+            },
+            D2: {
+              optionName: "Nerezový žebřík",
+              products: [
+                {
+                  productId: 36591,
+                  link: "https://www.poolzone.cz/p/schody-muro-luxe-3-st-aisi-316",
+                  quantity: 1,
+                },
+              ],
+            },
+            D3: {
+              optionName: "Rohové schody",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 4,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 4.5,
+                },
+              ],
+            },
+            D4: {
+              optionName: "Rohové schody s lavicí",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 5,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 6,
+                },
+              ],
+            },
+            D5: {
+              optionName: "Schody přes celou šířku",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 6,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 3.5,
+                },
+              ],
+            },
+          },
+        },
+      ],
+      C4: [
+        {
+          name: "Tvárnice",
+          productId: 38925,
+          link: "https://www.poolzone.cz/p/sada-polystyrenovych-tvarnic-pro-stavbu-bazenu-3-5x7x1-25m",
+          quantity: 1,
+        },
+        {
+          name: "Čerpadlo",
+          productId: 37116,
+          link: "https://www.poolzone.cz/p/cerpadlo-espa-nox-50-12m-iris-750",
+          quantity: 1,
+        },
+        {
+          name: "Filtrace",
+          productId: 37293,
+          link: "https://www.poolzone.cz/p/nadoba-top-vf-450-75kg-pisku",
+          quantity: 1,
+        },
+        {
+          name: "Písek",
+          productId: 35573,
+          link: "https://www.poolzone.cz/p/kremicity-pisek-0-3-0-8-25-kg",
+          quantity: 3,
+        },
+        {
+          name: "Spojovací materiál",
+          productId: 38955,
+          link: "https://www.poolzone.cz/p/sada-montazniho-materialu-pro-bazen-do-50m3-technologie-nad-urovni-vody",
+          quantity: 1,
+        },
+        {
+          name: "Technologie pro osazení",
+          productId: 38929,
+          link: "https://www.poolzone.cz/p/sada-technologickych-prvku-pro-osazeni-betonoveho-bazenu-do-50-m3",
+          quantity: 1,
+        },
+        {
+          name: "Fólie - běžné metry",
+          quantity: 39,
+        },
+        {
+          name: "Plech vnější",
+          productId: 36899,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+          quantity: 11,
+        },
+        {
+          name: "Plech vnitřní",
+          productId: 36900,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+          quantity: 4,
+        },
+        {
+          name: "Geotextilie",
+          productId: 37177,
+          link: "https://www.poolzone.cz/p/geotextilie-300-g-m2-bal-50bm-s-protiplisnovou-upravou-cerna-zazehlena",
+          quantity: 1,
+        },
+        {
+          name: "Protiproud",
+          hidden: true,
+          options: {
+            H1: {
+              optionName: "Bez protiproudu",
+              hidden: true,
+            },
+            H2: {
+              optionName: "65 m3/hod",
+              productId: 37721,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-65m3-h-2-5-kw-400v",
+              quantity: 1,
+            },
+            H3: {
+              optionName: "78 m3/hod",
+              productId: 37722,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-78m3-h-3-0-kw-400v",
+              quantity: 1,
+            },
+            H4: {
+              optionName: "88 m3/hod",
+              productId: 37723,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-88m3-h-3-5-kw-400v",
+              quantity: 1,
+            },
+          },
+        },
+        {
+          name: "Úprava vody",
+          hidden: true,
+          options: {
+            G1: {
+              optionName: "Bez úpravy vody",
+              hidden: true,
+            },
+            G2: {
+              optionName: "UV lampa",
+              products: [
+                {
+                  productId: 37302,
+                  link: "https://www.poolzone.cz/p/uv-c-lampa-pool-basic-80w-philips",
+                  quantity: 1,
+                },
+                {
+                  productId: 36058,
+                  link: "https://www.poolzone.cz/p/redukce-kratka-d63-50-pn16-pvc",
+                  quantity: 2,
+                },
+              ],
+            },
+            G3: {
+              optionName: "Manuální solonizační jednotka (slaná voda)",
+              products: [
+                {
+                  productId: 37733,
+                  link: "https://www.poolzone.cz/p/minisalt-nps-12-60-do-60m3",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 6,
+                },
+              ],
+            },
+            G4: {
+              optionName:
+                "Automatická solonizační jednotka s dávkováním pH (slaná voda)",
+              products: [
+                {
+                  productId: 38516,
+                  link: "https://www.poolzone.cz/p/solonizacni-jednotka-mr-pure-premium-mps14-ph-rx-orp",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 6,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+              ],
+            },
+            G5: {
+              optionName: "Automatický dávkovač chlóru a pH",
+              products: [
+                {
+                  productId: 38019,
+                  link: "https://www.poolzone.cz/p/automaticka-regulace-ph-a-rx-propilot-duo-davkovani-ph-cl",
+                  quantity: 1,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+                {
+                  productId: 36199,
+                  link: "https://www.poolzone.cz/p/profipool-chlor-tekuty-stabilizovany-25kg",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Ohřev vody",
+          hidden: true,
+          options: {
+            F1: {
+              optionName: "Bez ohřevu vody",
+              hidden: true,
+            },
+            F2: {
+              optionName: "Tepelné čerpadlo",
+              products: [
+                {
+                  productId: 38935,
+                  link: "https://www.poolzone.cz/p/tepelne-cerpadlo-mr-silence-pro-9kw-15-30m3",
+                  quantity: 1,
+                },
+              ],
+            },
+            F3: {
+              optionName: "Tepelný výměník",
+              products: [
+                {
+                  productId: 36722,
+                  link: "https://www.poolzone.cz/p/titanovy-vymenik-elecro-g2-49kw",
+                  quantity: 1,
+                },
+              ],
+            },
+            F4: {
+              optionName: "Elektrický ohřev",
+              products: [
+                {
+                  productId: 37570,
+                  link: "https://www.poolzone.cz/p/elecro-evolution2-9kw-400v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Osvětlení",
+          hidden: true,
+          options: {
+            E1: {
+              optionName: "Bez světla",
+              hidden: true,
+            },
+            E2: {
+              optionName: "Jedno bílé světlo",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E3: {
+              optionName: "Dvě bílá světla",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E4: {
+              optionName: "Jedno barevné světlo",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E5: {
+              optionName: "Dvě barevná světla",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Vstup do bazénu",
+          hidden: true,
+          options: {
+            D1: {
+              optionName: "Bez vstupu",
+              hidden: true,
+            },
+            D2: {
+              optionName: "Nerezový žebřík",
+              products: [
+                {
+                  productId: 36591,
+                  link: "https://www.poolzone.cz/p/schody-muro-luxe-3-st-aisi-316",
+                  quantity: 1,
+                },
+              ],
+            },
+            D3: {
+              optionName: "Rohové schody",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 4,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 1,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 4.5,
+                },
+              ],
+            },
+            D4: {
+              optionName: "Rohové schody s lavicí",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 5,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 7,
+                },
+              ],
+            },
+            D5: {
+              optionName: "Schody přes celou šířku",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 7,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 4,
+                },
+              ],
+            },
+          },
+        },
+      ],
+      C5: [
+        {
+          name: "Tvárnice",
+          productId: 38927,
+          link: "https://www.poolzone.cz/p/sada-polystyrenovych-tvarnic-pro-stavbu-bazenu-4x8x1-25m",
+          quantity: 1,
+        },
+        {
+          name: "Čerpadlo",
+          productId: 37117,
+          link: "https://www.poolzone.cz/p/cerpadlo-espa-nox-100-15m-iris-1000",
+          quantity: 1,
+        },
+        {
+          name: "Filtrace",
+          productId: 37294,
+          link: "https://www.poolzone.cz/p/nadoba-top-vf-500-95kg-pisku",
+          quantity: 1,
+        },
+        {
+          name: "Písek",
+          productId: 35573,
+          link: "https://www.poolzone.cz/p/kremicity-pisek-0-3-0-8-25-kg",
+          quantity: 4,
+        },
+        {
+          name: "Spojovací materiál",
+          productId: 38955,
+          link: "https://www.poolzone.cz/p/sada-montazniho-materialu-pro-bazen-do-50m3-technologie-nad-urovni-vody",
+          quantity: 1,
+        },
+        {
+          name: "Technologie pro osazení",
+          productId: 38929,
+          link: "https://www.poolzone.cz/p/sada-technologickych-prvku-pro-osazeni-betonoveho-bazenu-do-50-m3",
+          quantity: 1,
+        },
+        {
+          name: "Fólie - běžné metry",
+          quantity: 45,
+        },
+        {
+          name: "Plech vnější",
+          productId: 36899,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+          quantity: 13,
+        },
+        {
+          name: "Plech vnitřní",
+          productId: 36900,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+          quantity: 4,
+        },
+        {
+          name: "Geotextilie",
+          productId: 37177,
+          link: "https://www.poolzone.cz/p/geotextilie-300-g-m2-bal-50bm-s-protiplisnovou-upravou-cerna-zazehlena",
+          quantity: 1,
+        },
+        {
+          name: "Protiproud",
+          hidden: true,
+          options: {
+            H1: {
+              optionName: "Bez protiproudu",
+              hidden: true,
+            },
+            H2: {
+              optionName: "65 m3/hod",
+              productId: 37721,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-65m3-h-2-5-kw-400v",
+              quantity: 1,
+            },
+            H3: {
+              optionName: "78 m3/hod",
+              productId: 37722,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-78m3-h-3-0-kw-400v",
+              quantity: 1,
+            },
+            H4: {
+              optionName: "88 m3/hod",
+              productId: 37723,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-88m3-h-3-5-kw-400v",
+              quantity: 1,
+            },
+          },
+        },
+        {
+          name: "Úprava vody",
+          hidden: true,
+          options: {
+            G1: {
+              optionName: "Bez úpravy vody",
+              hidden: true,
+            },
+            G2: {
+              optionName: "UV lampa",
+              products: [
+                {
+                  productId: 37302,
+                  link: "https://www.poolzone.cz/p/uv-c-lampa-pool-basic-80w-philips",
+                  quantity: 1,
+                },
+                {
+                  productId: 36058,
+                  link: "https://www.poolzone.cz/p/redukce-kratka-d63-50-pn16-pvc",
+                  quantity: 2,
+                },
+              ],
+            },
+            G3: {
+              optionName: "Manuální solonizační jednotka (slaná voda)",
+              products: [
+                {
+                  productId: 37733,
+                  link: "https://www.poolzone.cz/p/minisalt-nps-12-60-do-60m3",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 8,
+                },
+              ],
+            },
+            G4: {
+              optionName:
+                "Automatická solonizační jednotka s dávkováním pH (slaná voda)",
+              products: [
+                {
+                  productId: 38516,
+                  link: "https://www.poolzone.cz/p/solonizacni-jednotka-mr-pure-premium-mps14-ph-rx-orp",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 8,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+              ],
+            },
+            G5: {
+              optionName: "Automatický dávkovač chlóru a pH",
+              products: [
+                {
+                  productId: 38019,
+                  link: "https://www.poolzone.cz/p/automaticka-regulace-ph-a-rx-propilot-duo-davkovani-ph-cl",
+                  quantity: 1,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+                {
+                  productId: 36199,
+                  link: "https://www.poolzone.cz/p/profipool-chlor-tekuty-stabilizovany-25kg",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Ohřev vody",
+          hidden: true,
+          options: {
+            F1: {
+              optionName: "Bez ohřevu vody",
+              hidden: true,
+            },
+            F2: {
+              optionName: "Tepelné čerpadlo",
+              products: [
+                {
+                  productId: 37946,
+                  link: "https://www.poolzone.cz/p/tepelne-cerpadlo-mr-silence-pro-11kw-20-45m3",
+                  quantity: 1,
+                },
+              ],
+            },
+            F3: {
+              optionName: "Tepelný výměník",
+              products: [
+                {
+                  productId: 36722,
+                  link: "https://www.poolzone.cz/p/titanovy-vymenik-elecro-g2-49kw",
+                  quantity: 1,
+                },
+              ],
+            },
+            F4: {
+              optionName: "Elektrický ohřev",
+              products: [
+                {
+                  productId: 37571,
+                  link: "https://www.poolzone.cz/p/elecro-evolution2-12kw-400v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Osvětlení",
+          hidden: true,
+          options: {
+            E1: {
+              optionName: "Bez světla",
+              hidden: true,
+            },
+            E2: {
+              optionName: "Jedno bílé světlo",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E3: {
+              optionName: "Dvě bílá světla",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E4: {
+              optionName: "Jedno barevné světlo",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E5: {
+              optionName: "Dvě barevná světla",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Vstup do bazénu",
+          hidden: true,
+          options: {
+            D1: {
+              optionName: "Bez vstupu",
+              hidden: true,
+            },
+            D2: {
+              optionName: "Nerezový žebřík",
+              products: [
+                {
+                  productId: 36591,
+                  link: "https://www.poolzone.cz/p/schody-muro-luxe-3-st-aisi-316",
+                  quantity: 1,
+                },
+              ],
+            },
+            D3: {
+              optionName: "Rohové schody",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 4,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 4.5,
+                },
+              ],
+            },
+            D4: {
+              optionName: "Rohové schody s lavicí",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 5,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 7,
+                },
+              ],
+            },
+            D5: {
+              optionName: "Schody přes celou šířku",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 8,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 4.5,
+                },
+              ],
+            },
+          },
+        },
+      ],
+      C6: [
+        {
+          name: "Tvárnice",
+          productId: 38920,
+          link: "https://www.poolzone.cz/p/sada-polystyrenovych-tvarnic-pro-stavbu-bazenu-3x4x1-5m",
+          quantity: 1,
+        },
+        {
+          name: "Čerpadlo",
+          productId: 37115,
+          link: "https://www.poolzone.cz/p/cerpadlo-espa-nox-33-8m-iris-500",
+          quantity: 1,
+        },
+        {
+          name: "Filtrace",
+          productId: 36514,
+          link: "https://www.poolzone.cz/p/filtracni-nadoba-top-400-6m3-hod-35kg-pisku",
+          quantity: 1,
+        },
+        {
+          name: "Písek",
+          productId: 35573,
+          link: "https://www.poolzone.cz/p/kremicity-pisek-0-3-0-8-25-kg",
+          quantity: 2,
+        },
+        {
+          name: "Spojovací materiál",
+          productId: 38955,
+          link: "https://www.poolzone.cz/p/sada-montazniho-materialu-pro-bazen-do-50m3-technologie-nad-urovni-vody",
+          quantity: 1,
+        },
+        {
+          name: "Technologie pro osazení",
+          productId: 38930,
+          link: "https://www.poolzone.cz/p/sada-technologickych-prvku-pro-osazeni-betonoveho-bazenu-do-25-m3",
+          quantity: 1,
+        },
+        {
+          name: "Fólie - běžné metry",
+          quantity: 24,
+        },
+        {
+          name: "Plech vnější",
+          productId: 36899,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+          quantity: 8,
+        },
+        {
+          name: "Plech vnitřní",
+          productId: 36900,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+          quantity: 4,
+        },
+        {
+          name: "Geotextilie",
+          productId: 37177,
+          link: "https://www.poolzone.cz/p/geotextilie-300-g-m2-bal-50bm-s-protiplisnovou-upravou-cerna-zazehlena",
+          quantity: 1,
+        },
+        {
+          name: "Protiproud",
+          hidden: true,
+          options: {
+            H1: {
+              optionName: "Bez protiproudu",
+              hidden: true,
+            },
+            H2: {
+              optionName: "65 m3/hod",
+              productId: 37721,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-65m3-h-2-5-kw-400v",
+              quantity: 1,
+            },
+            H3: {
+              optionName: "78 m3/hod",
+              productId: 37722,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-78m3-h-3-0-kw-400v",
+              quantity: 1,
+            },
+          },
+        },
+        {
+          name: "Úprava vody",
+          hidden: true,
+          options: {
+            G1: {
+              optionName: "Bez úpravy vody",
+              hidden: true,
+            },
+            G2: {
+              optionName: "UV lampa",
+              products: [
+                {
+                  productId: 37301,
+                  link: "https://www.poolzone.cz/p/uv-c-lampa-pool-basic-40w-philips",
+                  quantity: 1,
+                },
+                {
+                  productId: 36058,
+                  link: "https://www.poolzone.cz/p/redukce-kratka-d63-50-pn16-pvc",
+                  quantity: 2,
+                },
+              ],
+            },
+            G3: {
+              optionName: "Manuální solonizační jednotka (slaná voda)",
+              products: [
+                {
+                  productId: 37733,
+                  link: "https://www.poolzone.cz/p/minisalt-nps-12-60-do-60m3",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 4,
+                },
+              ],
+            },
+            G4: {
+              optionName:
+                "Automatická solonizační jednotka s dávkováním pH (slaná voda)",
+              products: [
+                {
+                  productId: 38516,
+                  link: "https://www.poolzone.cz/p/solonizacni-jednotka-mr-pure-premium-mps14-ph-rx-orp",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 4,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+              ],
+            },
+            G5: {
+              optionName: "Automatický dávkovač chlóru a pH",
+              products: [
+                {
+                  productId: 38019,
+                  link: "https://www.poolzone.cz/p/automaticka-regulace-ph-a-rx-propilot-duo-davkovani-ph-cl",
+                  quantity: 1,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+                {
+                  productId: 36199,
+                  link: "https://www.poolzone.cz/p/profipool-chlor-tekuty-stabilizovany-25kg",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Ohřev vody",
+          hidden: true,
+          options: {
+            F1: {
+              optionName: "Bez ohřevu vody",
+              hidden: true,
+            },
+            F2: {
+              optionName: "Tepelné čerpadlo",
+              products: [
+                {
+                  productId: 38934,
+                  link: "https://www.poolzone.cz/p/tepelne-cerpadlo-mr-silence-pro-7kw-10-25m3",
+                  quantity: 1,
+                },
+              ],
+            },
+            F3: {
+              optionName: "Tepelný výměník",
+              products: [
+                {
+                  productId: 36722,
+                  link: "https://www.poolzone.cz/p/titanovy-vymenik-elecro-g2-49kw",
+                  quantity: 1,
+                },
+              ],
+            },
+            F4: {
+              optionName: "Elektrický ohřev",
+              products: [
+                {
+                  productId: 37569,
+                  link: "https://www.poolzone.cz/p/elecro-evolution2-6kw-400v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Osvětlení",
+          hidden: true,
+          options: {
+            E1: {
+              optionName: "Bez světla",
+              hidden: true,
+            },
+            E2: {
+              optionName: "Jedno bílé světlo",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E3: {
+              optionName: "Dvě bílá světla",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E4: {
+              optionName: "Jedno barevné světlo",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E5: {
+              optionName: "Dvě barevná světla",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Vstup do bazénu",
+          hidden: true,
+          options: {
+            D1: {
+              optionName: "Bez vstupu",
+              hidden: true,
+            },
+            D2: {
+              optionName: "Nerezový žebřík",
+              products: [
+                {
+                  productId: 36592,
+                  link: "https://www.poolzone.cz/p/schody-muro-luxe-4-st-aisi-316",
+                  quantity: 1,
+                },
+              ],
+            },
+            D3: {
+              optionName: "Rohové schody",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 4,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 4.5,
+                },
+              ],
+            },
+            D4: {
+              optionName: "Rohové schody s lavicí",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 5,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 6,
+                },
+              ],
+            },
+            D5: {
+              optionName: "Schody přes celou šířku",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 6,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 3.5,
+                },
+              ],
+            },
+          },
+        },
+      ],
+      C7: [
+        {
+          name: "Tvárnice",
+          productId: 38922,
+          link: "https://www.poolzone.cz/p/sada-polystyrenovych-tvarnic-pro-stavbu-bazenu-3x5x1-5m",
+          quantity: 1,
+        },
+        {
+          name: "Čerpadlo",
+          productId: 37115,
+          link: "https://www.poolzone.cz/p/cerpadlo-espa-nox-33-8m-iris-500",
+          quantity: 1,
+        },
+        {
+          name: "Filtrace",
+          productId: 36514,
+          link: "https://www.poolzone.cz/p/filtracni-nadoba-top-400-6m3-hod-35kg-pisku",
+          quantity: 1,
+        },
+        {
+          name: "Písek",
+          productId: 35573,
+          link: "https://www.poolzone.cz/p/kremicity-pisek-0-3-0-8-25-kg",
+          quantity: 2,
+        },
+        {
+          name: "Spojovací materiál",
+          productId: 38955,
+          link: "https://www.poolzone.cz/p/sada-montazniho-materialu-pro-bazen-do-50m3-technologie-nad-urovni-vody",
+          quantity: 1,
+        },
+        {
+          name: "Technologie pro osazení",
+          productId: 38930,
+          link: "https://www.poolzone.cz/p/sada-technologickych-prvku-pro-osazeni-betonoveho-bazenu-do-25-m3",
+          quantity: 1,
+        },
+        {
+          name: "Fólie - běžné metry",
+          quantity: 28,
+        },
+        {
+          name: "Plech vnější",
+          productId: 36899,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+          quantity: 9,
+        },
+        {
+          name: "Plech vnitřní",
+          productId: 36900,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+          quantity: 4,
+        },
+        {
+          name: "Geotextilie",
+          productId: 37177,
+          link: "https://www.poolzone.cz/p/geotextilie-300-g-m2-bal-50bm-s-protiplisnovou-upravou-cerna-zazehlena",
+          quantity: 1,
+        },
+        {
+          name: "Protiproud",
+          hidden: true,
+          options: {
+            H1: {
+              optionName: "Bez protiproudu",
+              hidden: true,
+            },
+            H2: {
+              optionName: "65 m3/hod",
+              productId: 37721,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-65m3-h-2-5-kw-400v",
+              quantity: 1,
+            },
+            H3: {
+              optionName: "78 m3/hod",
+              productId: 37722,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-78m3-h-3-0-kw-400v",
+              quantity: 1,
+            },
+          },
+        },
+        {
+          name: "Úprava vody",
+          hidden: true,
+          options: {
+            G1: {
+              optionName: "Bez úpravy vody",
+              hidden: true,
+            },
+            G2: {
+              optionName: "UV lampa",
+              products: [
+                {
+                  productId: 37301,
+                  link: "https://www.poolzone.cz/p/uv-c-lampa-pool-basic-40w-philips",
+                  quantity: 1,
+                },
+                {
+                  productId: 36058,
+                  link: "https://www.poolzone.cz/p/redukce-kratka-d63-50-pn16-pvc",
+                  quantity: 2,
+                },
+              ],
+            },
+            G3: {
+              optionName: "Manuální solonizační jednotka (slaná voda)",
+              products: [
+                {
+                  productId: 37732,
+                  link: "https://www.poolzone.cz/p/minisalt-nps-12-60-do-60m3",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 4,
+                },
+              ],
+            },
+            G4: {
+              optionName:
+                "Automatická solonizační jednotka s dávkováním pH (slaná voda)",
+              products: [
+                {
+                  productId: 38516,
+                  link: "https://www.poolzone.cz/p/solonizacni-jednotka-mr-pure-premium-mps14-ph-rx-orp",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 4,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+              ],
+            },
+            G5: {
+              optionName: "Automatický dávkovač chlóru a pH",
+              products: [
+                {
+                  productId: 38019,
+                  link: "https://www.poolzone.cz/p/automaticka-regulace-ph-a-rx-propilot-duo-davkovani-ph-cl",
+                  quantity: 1,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+                {
+                  productId: 36199,
+                  link: "https://www.poolzone.cz/p/profipool-chlor-tekuty-stabilizovany-25kg",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Ohřev vody",
+          hidden: true,
+          options: {
+            F1: {
+              optionName: "Bez ohřevu vody",
+              hidden: true,
+            },
+            F2: {
+              optionName: "Tepelné čerpadlo",
+              products: [
+                {
+                  productId: 38934,
+                  link: "https://www.poolzone.cz/p/tepelne-cerpadlo-mr-silence-pro-7kw-10-25m3",
+                  quantity: 1,
+                },
+              ],
+            },
+            F3: {
+              optionName: "Tepelný výměník",
+              products: [
+                {
+                  productId: 36722,
+                  link: "https://www.poolzone.cz/p/titanovy-vymenik-elecro-g2-49kw",
+                  quantity: 1,
+                },
+              ],
+            },
+            F4: {
+              optionName: "Elektrický ohřev",
+              products: [
+                {
+                  productId: 37569,
+                  link: "https://www.poolzone.cz/p/elecro-evolution2-6kw-400v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Osvětlení",
+          hidden: true,
+          options: {
+            E1: {
+              optionName: "Bez světla",
+              hidden: true,
+            },
+            E2: {
+              optionName: "Jedno bílé světlo",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E3: {
+              optionName: "Dvě bílá světla",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E4: {
+              optionName: "Jedno barevné světlo",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E5: {
+              optionName: "Dvě barevná světla",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Vstup do bazénu",
+          hidden: true,
+          options: {
+            D1: {
+              optionName: "Bez vstupu",
+              hidden: true,
+            },
+            D2: {
+              optionName: "Nerezový žebřík",
+              products: [
+                {
+                  productId: 36592,
+                  link: "https://www.poolzone.cz/p/schody-muro-luxe-4-st-aisi-316",
+                  quantity: 1,
+                },
+              ],
+            },
+            D3: {
+              optionName: "Rohové schody",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 4,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 4.5,
+                },
+              ],
+            },
+            D4: {
+              optionName: "Rohové schody s lavicí",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 5,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 6,
+                },
+              ],
+            },
+            D5: {
+              optionName: "Schody přes celou šířku",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 6,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 3.5,
+                },
+              ],
+            },
+          },
+        },
+      ],
+      C8: [
+        {
+          name: "Tvárnice",
+          productId: 38924,
+          link: "https://www.poolzone.cz/p/sada-polystyrenovych-tvarnic-pro-stavbu-bazenu-3x6x1-5m",
+          quantity: 1,
+        },
+        {
+          name: "Čerpadlo",
+          productId: 37116,
+          link: "https://www.poolzone.cz/p/cerpadlo-espa-nox-50-12m-iris-750",
+          quantity: 1,
+        },
+        {
+          name: "Filtrace",
+          productId: 37293,
+          link: "https://www.poolzone.cz/p/nadoba-top-vf-450-75kg-pisku",
+          quantity: 1,
+        },
+        {
+          name: "Písek",
+          productId: 35573,
+          link: "https://www.poolzone.cz/p/kremicity-pisek-0-3-0-8-25-kg",
+          quantity: 3,
+        },
+        {
+          name: "Spojovací materiál",
+          productId: 38955,
+          link: "https://www.poolzone.cz/p/sada-montazniho-materialu-pro-bazen-do-50m3-technologie-nad-urovni-vody",
+          quantity: 1,
+        },
+        {
+          name: "Technologie pro osazení",
+          productId: 38930,
+          link: "https://www.poolzone.cz/p/sada-technologickych-prvku-pro-osazeni-betonoveho-bazenu-do-25-m3",
+          quantity: 1,
+        },
+        {
+          name: "Fólie - běžné metry",
+          quantity: 31,
+        },
+        {
+          name: "Plech vnější",
+          productId: 36899,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+          quantity: 10,
+        },
+        {
+          name: "Plech vnitřní",
+          productId: 36900,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+          quantity: 4,
+        },
+        {
+          name: "Geotextilie",
+          productId: 37177,
+          link: "https://www.poolzone.cz/p/geotextilie-300-g-m2-bal-50bm-s-protiplisnovou-upravou-cerna-zazehlena",
+          quantity: 1,
+        },
+        {
+          name: "Protiproud",
+          hidden: true,
+          options: {
+            H1: {
+              optionName: "Bez protiproudu",
+              hidden: true,
+            },
+            H2: {
+              optionName: "65 m3/hod",
+              productId: 37721,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-65m3-h-2-5-kw-400v",
+              quantity: 1,
+            },
+            H3: {
+              optionName: "78 m3/hod",
+              productId: 37722,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-78m3-h-3-0-kw-400v",
+              quantity: 1,
+            },
+            H4: {
+              optionName: "88 m3/hod",
+              productId: 37723,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-88m3-h-3-5-kw-400v",
+              quantity: 1,
+            },
+          },
+        },
+        {
+          name: "Úprava vody",
+          hidden: true,
+          options: {
+            G1: {
+              optionName: "Bez úpravy vody",
+              hidden: true,
+            },
+            G2: {
+              optionName: "UV lampa",
+              products: [
+                {
+                  productId: 37301,
+                  link: "https://www.poolzone.cz/p/uv-c-lampa-pool-basic-40w-philips",
+                  quantity: 1,
+                },
+                {
+                  productId: 36058,
+                  link: "https://www.poolzone.cz/p/redukce-kratka-d63-50-pn16-pvc",
+                  quantity: 2,
+                },
+              ],
+            },
+            G3: {
+              optionName: "Manuální solonizační jednotka (slaná voda)",
+              products: [
+                {
+                  productId: 37732,
+                  link: "https://www.poolzone.cz/p/minisalt-nps-8-40-do-30m3",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 5,
+                },
+              ],
+            },
+            G4: {
+              optionName:
+                "Automatická solonizační jednotka s dávkováním pH (slaná voda)",
+              products: [
+                {
+                  productId: 38516,
+                  link: "https://www.poolzone.cz/p/solonizacni-jednotka-mr-pure-premium-mps14-ph-rx-orp",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 5,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+              ],
+            },
+            G5: {
+              optionName: "Automatický dávkovač chlóru a pH",
+              products: [
+                {
+                  productId: 38019,
+                  link: "https://www.poolzone.cz/p/automaticka-regulace-ph-a-rx-propilot-duo-davkovani-ph-cl",
+                  quantity: 1,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+                {
+                  productId: 36199,
+                  link: "https://www.poolzone.cz/p/profipool-chlor-tekuty-stabilizovany-25kg",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Ohřev vody",
+          hidden: true,
+          options: {
+            F1: {
+              optionName: "Bez ohřevu vody",
+              hidden: true,
+            },
+            F2: {
+              optionName: "Tepelné čerpadlo",
+              products: [
+                {
+                  productId: 38935,
+                  link: "https://www.poolzone.cz/p/tepelne-cerpadlo-mr-silence-pro-9kw-15-30m3",
+                  quantity: 1,
+                },
+              ],
+            },
+            F3: {
+              optionName: "Tepelný výměník",
+              products: [
+                {
+                  productId: 36722,
+                  link: "https://www.poolzone.cz/p/titanovy-vymenik-elecro-g2-49kw",
+                  quantity: 1,
+                },
+              ],
+            },
+            F4: {
+              optionName: "Elektrický ohřev",
+              products: [
+                {
+                  productId: 37570,
+                  link: "https://www.poolzone.cz/p/elecro-evolution2-9kw-400v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Osvětlení",
+          hidden: true,
+          options: {
+            E1: {
+              optionName: "Bez světla",
+              hidden: true,
+            },
+            E2: {
+              optionName: "Jedno bílé světlo",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E3: {
+              optionName: "Dvě bílá světla",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E4: {
+              optionName: "Jedno barevné světlo",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E5: {
+              optionName: "Dvě barevná světla",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Vstup do bazénu",
+          hidden: true,
+          options: {
+            D1: {
+              optionName: "Bez vstupu",
+              hidden: true,
+            },
+            D2: {
+              optionName: "Nerezový žebřík",
+              products: [
+                {
+                  productId: 36592,
+                  link: "https://www.poolzone.cz/p/schody-muro-luxe-4-st-aisi-316",
+                  quantity: 1,
+                },
+              ],
+            },
+            D3: {
+              optionName: "Rohové schody",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 4,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 4.5,
+                },
+              ],
+            },
+            D4: {
+              optionName: "Rohové schody s lavicí",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 5,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 6,
+                },
+              ],
+            },
+            D5: {
+              optionName: "Schody přes celou šířku",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 6,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 3.5,
+                },
+              ],
+            },
+          },
+        },
+      ],
+      C9: [
+        {
+          name: "Tvárnice",
+          productId: 38926,
+          link: "https://www.poolzone.cz/p/sada-polystyrenovych-tvarnic-pro-stavbu-bazenu-3-5x7x1-5m",
+          quantity: 1,
+        },
+        {
+          name: "Čerpadlo",
+          productId: 37116,
+          link: "https://www.poolzone.cz/p/cerpadlo-espa-nox-50-12m-iris-750",
+          quantity: 1,
+        },
+        {
+          name: "Filtrace",
+          productId: 37293,
+          link: "https://www.poolzone.cz/p/nadoba-top-vf-450-75kg-pisku",
+          quantity: 1,
+        },
+        {
+          name: "Písek",
+          productId: 35573,
+          link: "https://www.poolzone.cz/p/kremicity-pisek-0-3-0-8-25-kg",
+          quantity: 3,
+        },
+        {
+          name: "Spojovací materiál",
+          productId: 38955,
+          link: "https://www.poolzone.cz/p/sada-montazniho-materialu-pro-bazen-do-50m3-technologie-nad-urovni-vody",
+          quantity: 1,
+        },
+        {
+          name: "Technologie pro osazení",
+          productId: 38929,
+          link: "https://www.poolzone.cz/p/sada-technologickych-prvku-pro-osazeni-betonoveho-bazenu-do-50-m3",
+          quantity: 1,
+        },
+        {
+          name: "Fólie - běžné metry",
+          quantity: 39,
+        },
+        {
+          name: "Plech vnější",
+          productId: 36899,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+          quantity: 11,
+        },
+        {
+          name: "Plech vnitřní",
+          productId: 36900,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+          quantity: 4,
+        },
+        {
+          name: "Geotextilie",
+          productId: 37177,
+          link: "https://www.poolzone.cz/p/geotextilie-300-g-m2-bal-50bm-s-protiplisnovou-upravou-cerna-zazehlena",
+          quantity: 1,
+        },
+        {
+          name: "Protiproud",
+          hidden: true,
+          options: {
+            H1: {
+              optionName: "Bez protiproudu",
+              hidden: true,
+            },
+            H2: {
+              optionName: "65 m3/hod",
+              productId: 37721,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-65m3-h-2-5-kw-400v",
+              quantity: 1,
+            },
+            H3: {
+              optionName: "78 m3/hod",
+              productId: 37722,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-78m3-h-3-0-kw-400v",
+              quantity: 1,
+            },
+            H4: {
+              optionName: "88 m3/hod",
+              productId: 37723,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-88m3-h-3-5-kw-400v",
+              quantity: 1,
+            },
+          },
+        },
+        {
+          name: "Úprava vody",
+          hidden: true,
+          options: {
+            G1: {
+              optionName: "Bez úpravy vody",
+              hidden: true,
+            },
+            G2: {
+              optionName: "UV lampa",
+              products: [
+                {
+                  productId: 37302,
+                  link: "https://www.poolzone.cz/p/uv-c-lampa-pool-basic-80w-philips",
+                  quantity: 1,
+                },
+                {
+                  productId: 36058,
+                  link: "https://www.poolzone.cz/p/redukce-kratka-d63-50-pn16-pvc",
+                  quantity: 2,
+                },
+              ],
+            },
+            G3: {
+              optionName: "Manuální solonizační jednotka (slaná voda)",
+              products: [
+                {
+                  productId: 37733,
+                  link: "https://www.poolzone.cz/p/minisalt-nps-12-60-do-60m3",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 7,
+                },
+              ],
+            },
+            G4: {
+              optionName:
+                "Automatická solonizační jednotka s dávkováním pH (slaná voda)",
+              products: [
+                {
+                  productId: 38516,
+                  link: "https://www.poolzone.cz/p/solonizacni-jednotka-mr-pure-premium-mps14-ph-rx-orp",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 7,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+              ],
+            },
+            G5: {
+              optionName: "Automatický dávkovač chlóru a pH",
+              products: [
+                {
+                  productId: 38019,
+                  link: "https://www.poolzone.cz/p/automaticka-regulace-ph-a-rx-propilot-duo-davkovani-ph-cl",
+                  quantity: 1,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+                {
+                  productId: 36199,
+                  link: "https://www.poolzone.cz/p/profipool-chlor-tekuty-stabilizovany-25kg",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Ohřev vody",
+          hidden: true,
+          options: {
+            F1: {
+              optionName: "Bez ohřevu vody",
+              hidden: true,
+            },
+            F2: {
+              optionName: "Tepelné čerpadlo",
+              products: [
+                {
+                  productId: 38935,
+                  link: "https://www.poolzone.cz/p/tepelne-cerpadlo-mr-silence-pro-9kw-15-30m3",
+                  quantity: 1,
+                },
+              ],
+            },
+            F3: {
+              optionName: "Tepelný výměník",
+              products: [
+                {
+                  productId: 36722,
+                  link: "https://www.poolzone.cz/p/titanovy-vymenik-elecro-g2-49kw",
+                  quantity: 1,
+                },
+              ],
+            },
+            F4: {
+              optionName: "Elektrický ohřev",
+              products: [
+                {
+                  productId: 37570,
+                  link: "https://www.poolzone.cz/p/elecro-evolution2-9kw-400v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Osvětlení",
+          hidden: true,
+          options: {
+            E1: {
+              optionName: "Bez světla",
+              hidden: true,
+            },
+            E2: {
+              optionName: "Jedno bílé světlo",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E3: {
+              optionName: "Dvě bílá světla",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E4: {
+              optionName: "Jedno barevné světlo",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E5: {
+              optionName: "Dvě barevná světla",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Vstup do bazénu",
+          hidden: true,
+          options: {
+            D1: {
+              optionName: "Bez vstupu",
+              hidden: true,
+            },
+            D2: {
+              optionName: "Nerezový žebřík",
+              products: [
+                {
+                  productId: 36592,
+                  link: "https://www.poolzone.cz/p/schody-muro-luxe-4-st-aisi-316",
+                  quantity: 1,
+                },
+              ],
+            },
+            D3: {
+              optionName: "Rohové schody",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 4,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 1,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 4.5,
+                },
+              ],
+            },
+            D4: {
+              optionName: "Rohové schody s lavicí",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 5,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 7,
+                },
+              ],
+            },
+            D5: {
+              optionName: "Schody přes celou šířku",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 7,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 4,
+                },
+              ],
+            },
+          },
+        },
+      ],
+      C10: [
+        {
+          name: "Tvárnice",
+          productId: 38928,
+          link: "https://www.poolzone.cz/p/sada-polystyrenovych-tvarnic-pro-stavbu-bazenu-4x8x1-5m",
+          quantity: 1,
+        },
+        {
+          name: "Čerpadlo",
+          productId: 37117,
+          link: "https://www.poolzone.cz/p/cerpadlo-espa-nox-100-15m-iris-1000",
+          quantity: 1,
+        },
+        {
+          name: "Filtrace",
+          productId: 37294,
+          link: "https://www.poolzone.cz/p/nadoba-top-vf-500-95kg-pisku",
+          quantity: 1,
+        },
+        {
+          name: "Písek",
+          productId: 35573,
+          link: "https://www.poolzone.cz/p/kremicity-pisek-0-3-0-8-25-kg",
+          quantity: 4,
+        },
+        {
+          name: "Spojovací materiál",
+          productId: 38955,
+          link: "https://www.poolzone.cz/p/sada-montazniho-materialu-pro-bazen-do-50m3-technologie-nad-urovni-vody",
+          quantity: 1,
+        },
+        {
+          name: "Technologie pro osazení",
+          productId: 38929,
+          link: "https://www.poolzone.cz/p/sada-technologickych-prvku-pro-osazeni-betonoveho-bazenu-do-50-m3",
+          quantity: 1,
+        },
+        {
+          name: "Fólie - běžné metry",
+          quantity: 45,
+        },
+        {
+          name: "Plech vnější",
+          productId: 36899,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+          quantity: 13,
+        },
+        {
+          name: "Plech vnitřní",
+          productId: 36900,
+          link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+          quantity: 4,
+        },
+        {
+          name: "Geotextilie",
+          productId: 37177,
+          link: "https://www.poolzone.cz/p/geotextilie-300-g-m2-bal-50bm-s-protiplisnovou-upravou-cerna-zazehlena",
+          quantity: 1,
+        },
+        {
+          name: "Protiproud",
+          hidden: true,
+          options: {
+            H1: {
+              optionName: "Bez protiproudu",
+              hidden: true,
+            },
+            H2: {
+              optionName: "65 m3/hod",
+              productId: 37721,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-65m3-h-2-5-kw-400v",
+              quantity: 1,
+            },
+            H3: {
+              optionName: "78 m3/hod",
+              productId: 37722,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-78m3-h-3-0-kw-400v",
+              quantity: 1,
+            },
+            H4: {
+              optionName: "88 m3/hod",
+              productId: 37723,
+              link: "https://www.poolzone.cz/p/protiproud-a-jet-new-88m3-h-3-5-kw-400v",
+              quantity: 1,
+            },
+          },
+        },
+        {
+          name: "Úprava vody",
+          hidden: true,
+          options: {
+            G1: {
+              optionName: "Bez úpravy vody",
+              hidden: true,
+            },
+            G2: {
+              optionName: "UV lampa",
+              products: [
+                {
+                  productId: 37302,
+                  link: "https://www.poolzone.cz/p/uv-c-lampa-pool-basic-80w-philips",
+                  quantity: 1,
+                },
+                {
+                  productId: 36058,
+                  link: "https://www.poolzone.cz/p/redukce-kratka-d63-50-pn16-pvc",
+                  quantity: 2,
+                },
+              ],
+            },
+            G3: {
+              optionName: "Manuální solonizační jednotka (slaná voda)",
+              products: [
+                {
+                  productId: 37733,
+                  link: "https://www.poolzone.cz/p/minisalt-nps-12-60-do-60m3",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 9,
+                },
+              ],
+            },
+            G4: {
+              optionName:
+                "Automatická solonizační jednotka s dávkováním pH (slaná voda)",
+              products: [
+                {
+                  productId: 38516,
+                  link: "https://www.poolzone.cz/p/solonizacni-jednotka-mr-pure-premium-mps14-ph-rx-orp",
+                  quantity: 1,
+                },
+                {
+                  productId: 35905,
+                  link: "https://www.poolzone.cz/p/bazenova-sul-25kg",
+                  quantity: 9,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+              ],
+            },
+            G5: {
+              optionName: "Automatický dávkovač chlóru a pH",
+              products: [
+                {
+                  productId: 38019,
+                  link: "https://www.poolzone.cz/p/automaticka-regulace-ph-a-rx-propilot-duo-davkovani-ph-cl",
+                  quantity: 1,
+                },
+                {
+                  productId: 37773,
+                  link: "https://www.poolzone.cz/p/ph-minus-tekute-25-kg-profipool-14-pro-soukrome-bazeny",
+                  quantity: 1,
+                },
+                {
+                  productId: 36199,
+                  link: "https://www.poolzone.cz/p/profipool-chlor-tekuty-stabilizovany-25kg",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Ohřev vody",
+          hidden: true,
+          options: {
+            F1: {
+              optionName: "Bez ohřevu vody",
+              hidden: true,
+            },
+            F2: {
+              optionName: "Tepelné čerpadlo",
+              products: [
+                {
+                  productId: 37946,
+                  link: "https://www.poolzone.cz/p/tepelne-cerpadlo-mr-silence-pro-11kw-20-45m3",
+                  quantity: 1,
+                },
+              ],
+            },
+            F3: {
+              optionName: "Tepelný výměník",
+              products: [
+                {
+                  productId: 36722,
+                  link: "https://www.poolzone.cz/p/titanovy-vymenik-elecro-g2-49kw",
+                  quantity: 1,
+                },
+              ],
+            },
+            F4: {
+              optionName: "Elektrický ohřev",
+              products: [
+                {
+                  productId: 37571,
+                  link: "https://www.poolzone.cz/p/elecro-evolution2-12kw-400v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Osvětlení",
+          hidden: true,
+          options: {
+            E1: {
+              optionName: "Bez světla",
+              hidden: true,
+            },
+            E2: {
+              optionName: "Jedno bílé světlo",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E3: {
+              optionName: "Dvě bílá světla",
+              products: [
+                {
+                  productId: 38931,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-441-led-coolwhite-12v",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E4: {
+              optionName: "Jedno barevné světlo",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 1,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+            E5: {
+              optionName: "Dvě barevná světla",
+              products: [
+                {
+                  productId: 38933,
+                  link: "https://www.poolzone.cz/p/kompletni-sada-pro-montaz-svetla-emaux-led-rgb-16w-12v-252led",
+                  quantity: 2,
+                },
+                {
+                  productId: 36718,
+                  link: "https://www.poolzone.cz/p/transformator-pt-100w-230v-12v",
+                  quantity: 1,
+                },
+              ],
+            },
+          },
+        },
+        {
+          name: "Vstup do bazénu",
+          hidden: true,
+          options: {
+            D1: {
+              optionName: "Bez vstupu",
+              hidden: true,
+            },
+            D2: {
+              optionName: "Nerezový žebřík",
+              products: [
+                {
+                  productId: 36592,
+                  link: "https://www.poolzone.cz/p/schody-muro-luxe-4-st-aisi-316",
+                  quantity: 1,
+                },
+              ],
+            },
+            D3: {
+              optionName: "Rohové schody",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 4,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 4.5,
+                },
+              ],
+            },
+            D4: {
+              optionName: "Rohové schody s lavicí",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 5,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 7,
+                },
+              ],
+            },
+            D5: {
+              optionName: "Schody přes celou šířku",
+              products: [
+                {
+                  productId: 36899,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnejsi-cena-za-1-ks",
+                  quantity: 8,
+                },
+                {
+                  productId: 36900,
+                  link: "https://www.poolzone.cz/p/l-profil-poplastovany-60x40mm-x-2m-vnitrni-cena-za-1ks",
+                  quantity: 2,
+                },
+                {
+                  name: "Fólie - běžné metry",
+                  quantity: 4.5,
+                },
+              ],
+            },
+          },
+        },
+      ],
+    };
+    /* ----- End of Data ----- */
+
+    const poolSizesData = {
+      B1: [
+        { value: "C1", label: "3x4 m" },
+        { value: "C2", label: "3x5 m" },
+        { value: "C3", label: "3x6 m" },
+        { value: "C4", label: "3,5x7 m" },
+        { value: "C5", label: "4x8 m" },
+      ],
+      B2: [
+        { value: "C6", label: "3x4 m" },
+        { value: "C7", label: "3x5 m" },
+        { value: "C8", label: "3x6 m" },
+        { value: "C9", label: "3,5x7 m" },
+        { value: "C10", label: "4x8 m" },
+      ],
+    };
+
+    const folieVariants = {
+      I1: {
+        name: "Modrá",
+        productId: 37637,
+        link: "https://www.poolzone.cz/p/folie-elbe-sbg-classic-1-5mm-adriatic-blue-sire-1-65m-modra-604",
+      },
+      I2: {
+        name: "Světle modrá",
+        productId: 37697,
+        link: "https://www.poolzone.cz/p/folie-elbe-sbg-classic-1-5mm-light-blue-sire-1-65m-svetle-modra-687",
+      },
+      I3: {
+        name: "Bílá",
+        productId: 37641,
+        link: "https://www.poolzone.cz/p/folie-elbe-sbg-classic-1-5mm-white-sire-1-65m-bila-104",
+      },
+      I4: {
+        name: "Písková",
+        productId: 37638,
+        link: "https://www.poolzone.cz/p/folie-elbe-sbg-classic-1-5mm-sand-1-65m-piskova-153",
+      },
+      I5: {
+        name: "Tyrkysová",
+        productId: 37643,
+        link: "https://www.poolzone.cz/p/folie-elbe-sbg-classic-1-5mm-turquoise-sire-1-65m-tyrkysova-500",
+      },
+      I6: {
+        name: "Světle šedá",
+        productId: 37645,
+        link: "https://www.poolzone.cz/p/folie-elbe-sbg-classic-1-5mm-grey-sire-1-65m-seda-765",
+      },
+    };
+
+    let chosenUpravaVodyKey = null;
+    let chosenOhrevVodyKey = null;
+    let chosenOsvetleniKey = null;
+    let chosenVstupKey = null;
+
+    let selectedDepth = null;
+    let selectedPoolSize = null;
+    let chosenFolieKey = null;
+    let chosenProtiproudKey = null;
+    let tableRendered = false;
+
+    /* --- DOM References --- */
+    const poolSizeContainer = document.getElementById("poolSizeContainer");
+    const poolSizeOptions = document.getElementById("poolSizeOptions");
+    const folieContainer = document.getElementById("folieContainer");
+    const folieChoices = document.getElementById("folieChoices");
+    const protiproudContainer = document.getElementById("protiproudContainer");
+    const protiproudChoices = document.getElementById("protiproudChoices");
+    const upravaVodyContainer = document.getElementById("upravaVodyContainer");
+    const upravaVodyChoices = document.getElementById("upravaVodyChoices");
+    const ohrevVodyContainer = document.getElementById("ohrevVodyContainer");
+    const ohrevVodyChoices = document.getElementById("ohrevVodyChoices");
+    const osvetleniContainer = document.getElementById("osvetleniContainer");
+    const osvetleniChoices = document.getElementById("osvetleniChoices");
+    const vstupContainer = document.getElementById("vstupContainer");
+    const vstupChoices = document.getElementById("vstupChoices");
+    const resultsContainer = document.getElementById("resultsContainer");
+    const resultHeader = document.getElementById("resultHeader");
+    const snippetContainer = document.getElementById(
+      "snippet-products-productList"
+    );
+
+    /* --- Reset Steps Function --- */
+    function resetStepsFrom(step) {
+      if (step <= 2) {
+        selectedPoolSize = null;
+        poolSizeOptions.innerHTML = "";
+        poolSizeContainer.classList.add("hidden");
+      }
+      if (step <= 3) {
+        chosenFolieKey = null;
+        folieChoices.innerHTML = "";
+        folieContainer.classList.add("hidden");
+      }
+      if (step <= 4) {
+        chosenProtiproudKey = null;
+        protiproudChoices.innerHTML = "";
+        protiproudContainer.classList.add("hidden");
+      }
+      if (step <= 5) {
+        chosenUpravaVodyKey = null;
+        upravaVodyChoices.innerHTML = "";
+        upravaVodyContainer.classList.add("hidden");
+      }
+      if (step <= 6) {
+        chosenOhrevVodyKey = null;
+        ohrevVodyChoices.innerHTML = "";
+        ohrevVodyContainer.classList.add("hidden");
+      }
+      if (step <= 7) {
+        chosenOsvetleniKey = null;
+        osvetleniChoices.innerHTML = "";
+        osvetleniContainer.classList.add("hidden");
+      }
+      if (step <= 8) {
+        chosenVstupKey = null;
+        vstupChoices.innerHTML = "";
+        vstupContainer.classList.add("hidden");
+        resultsContainer.classList.add("hidden");
+        snippetContainer.innerHTML = "";
+        tableRendered = false;
+      }
+    }
+
+    /* --- Step 1: Depth --- */
+    Array.from(document.getElementsByName("depth")).forEach((radio) => {
+      radio.addEventListener("change", function () {
+        selectedDepth = this.value;
+        resetStepsFrom(2);
+        if (poolSizesData[selectedDepth]) {
+          poolSizesData[selectedDepth].forEach((opt) => {
+            poolSizeOptions.insertAdjacentHTML(
+              "beforeend",
+              `<div class="custom-control custom-radio custom-control-inline">
+                   <input type="radio" id="poolSize_${opt.value}" name="poolSize" class="custom-control-input" value="${opt.value}">
+                   <label class="custom-control-label" for="poolSize_${opt.value}">${opt.label}</label>
+                 </div>`
+            );
+          });
+          poolSizeContainer.classList.remove("hidden");
+          poolSizeContainer.classList.add("fade-in");
+          attachPoolSizeListeners();
+        }
+      });
+    });
+
+    /* --- Step 2: Pool Size --- */
+    function attachPoolSizeListeners() {
+      Array.from(document.getElementsByName("poolSize")).forEach((ps) => {
+        ps.addEventListener("change", function () {
+          selectedPoolSize = this.value;
+          resetStepsFrom(3);
+          buildFolieOptions();
+          folieContainer.classList.remove("hidden");
+          folieContainer.classList.add("fade-in");
+        });
+      });
+    }
+
+    /* --- Step 3: Fólie --- */
+    function buildFolieOptions() {
+      folieChoices.innerHTML = "";
+      Object.keys(folieVariants).forEach((key) => {
+        const fv = folieVariants[key];
+        folieChoices.insertAdjacentHTML(
+          "beforeend",
+          `<div class="custom-control custom-radio custom-control-inline">
+               <input type="radio" id="folie_${key}" name="folieVariant" class="custom-control-input" value="${key}">
+               <label class="custom-control-label" for="folie_${key}">${fv.name}</label>
+             </div>`
+        );
+      });
+      attachFolieListeners();
+    }
+    function attachFolieListeners() {
+      Array.from(document.getElementsByName("folieVariant")).forEach(
+        (radio) => {
+          radio.addEventListener("change", function () {
+            chosenFolieKey = this.value;
+            if (tableRendered) updateFolieRow();
+            buildProtiproudOptions();
+            protiproudContainer.classList.remove("hidden");
+            protiproudContainer.classList.add("fade-in");
+          });
+        }
+      );
+    }
+
+    /* --- Step 4: Protiproud --- */
+    function buildProtiproudOptions() {
+      const currentData = originalResultsData[selectedPoolSize];
+      const protiproudBase = currentData.find(
+        (item) => item.name === "Protiproud"
+      );
+      if (protiproudBase && protiproudBase.options) {
+        let html = "";
+        Object.keys(protiproudBase.options).forEach((key) => {
+          const opt = protiproudBase.options[key];
+          html += `<div class="custom-control custom-radio custom-control-inline">
+                       <input type="radio" id="protiproud_${key}" name="protiproudVariant" class="custom-control-input" value="${key}">
+                       <label class="custom-control-label" for="protiproud_${key}">${opt.optionName}</label>
+                     </div>`;
+        });
+        protiproudChoices.innerHTML = html;
+        attachProtiproudListeners();
+      }
+    }
+    function attachProtiproudListeners() {
+      Array.from(document.getElementsByName("protiproudVariant")).forEach(
+        (radio) => {
+          radio.addEventListener("change", function () {
+            chosenProtiproudKey = this.value;
+            if (!tableRendered) {
+              buildUpravaVodyOptions();
+              upravaVodyContainer.classList.remove("hidden");
+              upravaVodyContainer.classList.add("fade-in");
+            } else {
+              updateProtiproudRow();
+            }
+          });
+        }
+      );
+    }
+
+    /* --- Step 5: Úprava vody --- */
+    function buildUpravaVodyOptions() {
+      const currentData = originalResultsData[selectedPoolSize];
+      const upravaVodyBase = currentData.find(
+        (item) => item.name === "Úprava vody"
+      );
+      if (upravaVodyBase && upravaVodyBase.options) {
+        let html = "";
+        Object.keys(upravaVodyBase.options).forEach((key) => {
+          const opt = upravaVodyBase.options[key];
+          html += `<div class="custom-control custom-radio custom-control-inline">
+                       <input type="radio" id="upravaVody_${key}" name="upravaVodyVariant" class="custom-control-input" value="${key}">
+                       <label class="custom-control-label" for="upravaVody_${key}">${opt.optionName}</label>
+                     </div>`;
+        });
+        upravaVodyChoices.innerHTML = html;
+        attachUpravaVodyListeners();
+      }
+    }
+    function attachUpravaVodyListeners() {
+      Array.from(document.getElementsByName("upravaVodyVariant")).forEach(
+        (radio) => {
+          radio.addEventListener("change", function () {
+            chosenUpravaVodyKey = this.value;
+            if (!tableRendered) {
+              buildOhrevVodyOptions();
+              ohrevVodyContainer.classList.remove("hidden");
+              ohrevVodyContainer.classList.add("fade-in");
+            } else {
+              updateUpravaVodyRows();
+            }
+          });
+        }
+      );
+    }
+
+    /* --- Step 6: Ohřev vody --- */
+    function buildOhrevVodyOptions() {
+      const currentData = originalResultsData[selectedPoolSize];
+      const ohrevVodyBase = currentData.find(
+        (item) => item.name === "Ohřev vody"
+      );
+      if (ohrevVodyBase && ohrevVodyBase.options) {
+        let html = "";
+        Object.keys(ohrevVodyBase.options).forEach((key) => {
+          const opt = ohrevVodyBase.options[key];
+          html += `<div class="custom-control custom-radio custom-control-inline">
+                       <input type="radio" id="ohrevVody_${key}" name="ohrevVodyVariant" class="custom-control-input" value="${key}">
+                       <label class="custom-control-label" for="ohrevVody_${key}">${opt.optionName}</label>
+                     </div>`;
+        });
+        ohrevVodyChoices.innerHTML = html;
+        attachOhrevVodyListeners();
+      }
+    }
+    function attachOhrevVodyListeners() {
+      Array.from(document.getElementsByName("ohrevVodyVariant")).forEach(
+        (radio) => {
+          radio.addEventListener("change", function () {
+            chosenOhrevVodyKey = this.value;
+            if (!tableRendered) {
+              buildOsvetleniOptions();
+              osvetleniContainer.classList.remove("hidden");
+              osvetleniContainer.classList.add("fade-in");
+            } else {
+              updateOhrevVodyRows();
+            }
+          });
+        }
+      );
+    }
+
+    /* --- Step 7: Osvětlení --- */
+    function buildOsvetleniOptions() {
+      const currentData = originalResultsData[selectedPoolSize];
+      const osvetleniBase = currentData.find(
+        (item) => item.name === "Osvětlení"
+      );
+      if (osvetleniBase && osvetleniBase.options) {
+        let html = "";
+        Object.keys(osvetleniBase.options).forEach((key) => {
+          const opt = osvetleniBase.options[key];
+          html += `<div class="custom-control custom-radio custom-control-inline">
+                       <input type="radio" id="osvetleni_${key}" name="osvetleniVariant" class="custom-control-input" value="${key}">
+                       <label class="custom-control-label" for="osvetleni_${key}">${opt.optionName}</label>
+                     </div>`;
+        });
+        osvetleniChoices.innerHTML = html;
+        attachOsvetleniListeners();
+      }
+    }
+    function attachOsvetleniListeners() {
+      Array.from(document.getElementsByName("osvetleniVariant")).forEach(
+        (radio) => {
+          radio.addEventListener("change", function () {
+            chosenOsvetleniKey = this.value;
+            if (!tableRendered) {
+              buildVstupOptions();
+              vstupContainer.classList.remove("hidden");
+              vstupContainer.classList.add("fade-in");
+            } else {
+              updateOsvetleniRows();
+            }
+          });
+        }
+      );
+    }
+    function updateOsvetleniRows() {
+      const currentData = JSON.parse(
+        JSON.stringify(originalResultsData[selectedPoolSize])
+      );
+      const osvetleniBase = currentData.find(
+        (item) => item.name === "Osvětlení"
+      );
+      if (!osvetleniBase || !osvetleniBase.options) return;
+      const selectedOption = osvetleniBase.options[chosenOsvetleniKey];
+      if (!selectedOption.products || selectedOption.products.length === 0) {
+        removeOsvetleniRows();
+        return;
+      }
+      removeOsvetleniRows();
+      const tbody = document.querySelector(
+        "#snippet-products-productList table tbody"
+      );
+      selectedOption.products.forEach((prod) => {
+        const row = document.createElement("tr");
+        row.className = "SNIitem osvetleni-row";
+        row.setAttribute("data-product-id", prod.productId);
+        row.setAttribute("data-product-link", prod.link);
+        row.style.filter = "blur(4px)";
+        row.innerHTML = `
+            <td class="pit-category"><strong>Osvětlení</strong></td>
+            <td class="pit-image"><a href="${prod.link}" class="ta-c d-block" target="_blank"></a></td>
+            <td class="pit-name">
+              <a href="${prod.link}" target="_blank" class="bw-y fw-b mr-1"></a>
+              <div class=" labels ml-1">
+	              <a href="#" class="btn fg bg-de ico-sm lbl-quickinfo ProductMoreInfo NoHref mr-1 pos-s ra-tl-s-4 ra-tr-s-4 ra-br-s-4 ra-bl-s-4" title="Rychlé info">
+                  <i class="fa fa-info" aria-hidden="true"></i>
+                  <span class="sr-only">Rychlé info</span>
+                </a>
+	            </div>
+            </td>
+            <td class="pit-price"></td>
+            <td class="pit-quantity">
+              <input disabled type="text" value="${prod.quantity}" name="${prod.productId}_quantity" class="form-control" style="width: 70px; text-align: center;">
+            </td>
+            <td class="pit-button">
+              <a href="#" class="bg-se ml-3 fg btn NoHref AddProductToCart AddProductToCartInitialized" title="Do košíku" role="button">
+                <i class="fa fa-shopping-cart fa-lg" aria-hidden="true"></i>
+              </a>
+            </td>
+          `;
+        tbody.appendChild(row);
+        updateProductRow(row, prod.link);
+        setTimeout(() => {
+          row.style.filter = "";
+        }, 1000);
+      });
+    }
+    function removeOsvetleniRows() {
+      const rows = document.querySelectorAll(".osvetleni-row");
+      rows.forEach((row) => row.parentNode.removeChild(row));
+    }
+
+    /* --- Restored Update Functions --- */
+    // Update only the Fólie row.
+    function updateFolieRow() {
+      const currentData = JSON.parse(
+        JSON.stringify(originalResultsData[selectedPoolSize])
+      );
+      const originalFolie = currentData.find(
+        (item) => item.name === "Fólie - běžné metry"
+      );
+      if (!originalFolie || !folieVariants[chosenFolieKey]) return;
+      const updatedFolie = Object.assign({}, folieVariants[chosenFolieKey], {
+        quantity: originalFolie.quantity,
+        name: originalFolie.name,
+      });
+      let folieTableRow = Array.from(
+        document.querySelectorAll(
+          "#snippet-products-productList table tbody tr"
+        )
+      ).find(
+        (row) =>
+          row.querySelector(".pit-category strong").textContent.trim() ===
+          "Fólie - běžné metry"
+      );
+      if (folieTableRow) {
+        folieTableRow.style.filter = "blur(4px)";
+        const newHTML = `
+            <td class="pit-category"><strong>${updatedFolie.name}</strong></td>
+            <td class="pit-image">
+              <a href="${
+                updatedFolie.link || "#"
+              }" class="ta-c d-block" target="_blank"></a>
+            </td>
+            <td class="pit-name">
+              <a href="${
+                updatedFolie.link || "#"
+              }" target="_blank" class="bw-y fw-b mr-1"></a>
+              <div class=" labels ml-1">
+	              <a href="#" class="btn fg bg-de ico-sm lbl-quickinfo ProductMoreInfo NoHref mr-1 pos-s ra-tl-s-4 ra-tr-s-4 ra-br-s-4 ra-bl-s-4" title="Rychlé info">
+                  <i class="fa fa-info" aria-hidden="true"></i>
+                  <span class="sr-only">Rychlé info</span>
+                </a>
+	            </div>
+            </td>
+            <td class="pit-price"></td>
+            <td class="pit-quantity">
+              <input disabled type="text" value="${
+                updatedFolie.quantity
+              }" name="${
+          updatedFolie.productId || ""
+        }_quantity" class="form-control" style="width: 70px; text-align: center;">
+            </td>
+            <td class="pit-button">
+              <a href="#" class="bg-se ml-3 fg btn NoHref AddProductToCart AddProductToCartInitialized" title="Do košíku" role="button">
+                <i class="fa fa-shopping-cart fa-lg" aria-hidden="true"></i>
+              </a>
+            </td>
+          `;
+        folieTableRow.innerHTML = newHTML;
+        updateProductRow(folieTableRow, updatedFolie.link);
+        setTimeout(() => {
+          folieTableRow.style.filter = "";
+        }, 1000);
+      }
+    }
+
+    // Update or add the Protiproud extra row.
+    function updateProtiproudRow() {
+      const currentData = JSON.parse(
+        JSON.stringify(originalResultsData[selectedPoolSize])
+      );
+      const protiproudBase = currentData.find(
+        (item) => item.name === "Protiproud"
+      );
+      if (!protiproudBase || !protiproudBase.options) return;
+      const selectedOption = protiproudBase.options[chosenProtiproudKey];
+      if (!selectedOption.productId) {
+        removeProtiproudRow();
+        return;
+      }
+      const extraProduct = Object.assign({}, selectedOption);
+      let extraRow = document.querySelector(".protiproud-row");
+      if (!extraRow) {
+        const tbody = document.querySelector(
+          "#snippet-products-productList table tbody"
+        );
+        extraRow = document.createElement("tr");
+        extraRow.className = "SNIitem protiproud-row";
+        extraRow.setAttribute("data-product-id", extraProduct.productId);
+        extraRow.setAttribute("data-product-link", extraProduct.link);
+        extraRow.innerHTML = `
+            <td class="pit-category"><strong>Protiproud</strong></td>
+            <td class="pit-image">
+              <a href="${extraProduct.link}" class="ta-c d-block" target="_blank"></a>
+            </td>
+            <td class="pit-name">
+              <a href="${extraProduct.link}" target="_blank" class="bw-y fw-b mr-1"></a>
+              <div class=" labels ml-1">
+	              <a href="#" class="btn fg bg-de ico-sm lbl-quickinfo ProductMoreInfo NoHref mr-1 pos-s ra-tl-s-4 ra-tr-s-4 ra-br-s-4 ra-bl-s-4" title="Rychlé info">
+                  <i class="fa fa-info" aria-hidden="true"></i>
+                  <span class="sr-only">Rychlé info</span>
+                </a>
+	            </div>
+            </td>
+            <td class="pit-price"></td>
+            <td class="pit-quantity">
+              <input disabled type="text" value="${extraProduct.quantity}" name="${extraProduct.productId}_quantity" class="form-control" style="width: 70px; text-align: center;">
+            </td>
+            <td class="pit-button">
+              <a href="#" class="bg-se ml-3 fg btn NoHref AddProductToCart AddProductToCartInitialized" title="Do košíku" role="button">
+                <i class="fa fa-shopping-cart fa-lg" aria-hidden="true"></i>
+              </a>
+            </td>
+          `;
+        tbody.appendChild(extraRow);
+      } else {
+        extraRow.querySelector(".pit-category strong").textContent =
+          "Protiproud";
+        extraRow.setAttribute("data-product-id", extraProduct.productId);
+        extraRow.setAttribute("data-product-link", extraProduct.link);
+        extraRow.innerHTML = `
+            <td class="pit-category"><strong>Protiproud</strong></td>
+            <td class="pit-image">
+              <a href="${extraProduct.link}" class="ta-c d-block" target="_blank"></a>
+            </td>
+            <td class="pit-name">
+              <a href="${extraProduct.link}" target="_blank" class="bw-y fw-b mr-1"></a>
+              <div class=" labels ml-1">
+	              <a href="#" class="btn fg bg-de ico-sm lbl-quickinfo ProductMoreInfo NoHref mr-1 pos-s ra-tl-s-4 ra-tr-s-4 ra-br-s-4 ra-bl-s-4" title="Rychlé info">
+                  <i class="fa fa-info" aria-hidden="true"></i>
+                  <span class="sr-only">Rychlé info</span>
+                </a>
+	            </div>
+            </td>
+            <td class="pit-price"></td>
+            <td class="pit-quantity">
+              <input disabled type="text" value="${extraProduct.quantity}" name="${extraProduct.productId}_quantity" class="form-control" style="width: 70px; text-align: center;">
+            </td>
+            <td class="pit-button">
+              <a href="#" class="bg-se ml-3 fg btn NoHref AddProductToCart AddProductToCartInitialized" title="Do košíku" role="button">
+                <i class="fa fa-shopping-cart fa-lg" aria-hidden="true"></i>
+              </a>
+            </td>
+          `;
+      }
+      extraRow.style.filter = "blur(4px)";
+      updateProductRow(extraRow, extraProduct.link);
+      setTimeout(() => {
+        extraRow.style.filter = "";
+      }, 1000);
+    }
+    function removeProtiproudRow() {
+      const extraRow = document.querySelector(".protiproud-row");
+      if (extraRow) {
+        extraRow.parentNode.removeChild(extraRow);
+      }
+    }
+
+    // Update or add the Úprava vody rows.
+    function updateUpravaVodyRows() {
+      const currentData = JSON.parse(
+        JSON.stringify(originalResultsData[selectedPoolSize])
+      );
+      const upravaVodyBase = currentData.find(
+        (item) => item.name === "Úprava vody"
+      );
+      if (!upravaVodyBase || !upravaVodyBase.options) return;
+      const selectedOption = upravaVodyBase.options[chosenUpravaVodyKey];
+      if (
+        !selectedOption.products ||
+        !Array.isArray(selectedOption.products) ||
+        selectedOption.products.length === 0
+      ) {
+        removeUpravaVodyRows();
+        return;
+      }
+      removeUpravaVodyRows();
+      const tbody = document.querySelector(
+        "#snippet-products-productList table tbody"
+      );
+      selectedOption.products.forEach((prod) => {
+        const row = document.createElement("tr");
+        row.className = "SNIitem uprava-vody-row";
+        row.setAttribute("data-product-id", prod.productId);
+        row.setAttribute("data-product-link", prod.link);
+        row.style.filter = "blur(4px)";
+        row.innerHTML = `
+            <td class="pit-category"><strong>Úprava vody</strong></td>
+            <td class="pit-image">
+              <a href="${prod.link}" class="ta-c d-block" target="_blank"></a>
+            </td>
+            <td class="pit-name">
+              <a href="${prod.link}" target="_blank" class="bw-y fw-b mr-1"></a>
+              <div class=" labels ml-1">
+	              <a href="#" class="btn fg bg-de ico-sm lbl-quickinfo ProductMoreInfo NoHref mr-1 pos-s ra-tl-s-4 ra-tr-s-4 ra-br-s-4 ra-bl-s-4" title="Rychlé info">
+                  <i class="fa fa-info" aria-hidden="true"></i>
+                  <span class="sr-only">Rychlé info</span>
+                </a>
+	            </div>
+            </td>
+            <td class="pit-price"></td>
+            <td class="pit-quantity">
+              <input disabled type="text" value="${prod.quantity}" name="${prod.productId}_quantity" class="form-control" style="width: 70px; text-align: center;">
+            </td>
+            <td class="pit-button">
+              <a href="#" class="bg-se ml-3 fg btn NoHref AddProductToCart AddProductToCartInitialized" title="Do košíku" role="button">
+                <i class="fa fa-shopping-cart fa-lg" aria-hidden="true"></i>
+              </a>
+            </td>
+          `;
+        tbody.appendChild(row);
+        updateProductRow(row, prod.link);
+        setTimeout(() => {
+          row.style.filter = "";
+        }, 1000);
+      });
+    }
+    function removeUpravaVodyRows() {
+      const rows = document.querySelectorAll(".uprava-vody-row");
+      rows.forEach((row) => row.parentNode.removeChild(row));
+    }
+
+    // Update or add the Ohřev vody rows.
+    function updateOhrevVodyRows() {
+      const currentData = JSON.parse(
+        JSON.stringify(originalResultsData[selectedPoolSize])
+      );
+      const ohrevVodyBase = currentData.find(
+        (item) => item.name === "Ohřev vody"
+      );
+      if (!ohrevVodyBase || !ohrevVodyBase.options) return;
+      const selectedOption = ohrevVodyBase.options[chosenOhrevVodyKey];
+      if (
+        !selectedOption.products ||
+        !Array.isArray(selectedOption.products) ||
+        selectedOption.products.length === 0
+      ) {
+        removeOhrevVodyRows();
+        return;
+      }
+      removeOhrevVodyRows();
+      const tbody = document.querySelector(
+        "#snippet-products-productList table tbody"
+      );
+      selectedOption.products.forEach((prod) => {
+        const row = document.createElement("tr");
+        row.className = "SNIitem ohrev-vody-row";
+        row.setAttribute("data-product-id", prod.productId);
+        row.setAttribute("data-product-link", prod.link);
+        row.style.filter = "blur(4px)";
+        row.innerHTML = `
+            <td class="pit-category"><strong>Ohřev vody</strong></td>
+            <td class="pit-image">
+              <a href="${prod.link}" class="ta-c d-block" target="_blank"></a>
+            </td>
+            <td class="pit-name">
+              <a href="${prod.link}" target="_blank" class="bw-y fw-b mr-1"></a>
+              <div class=" labels ml-1">
+	              <a href="#" class="btn fg bg-de ico-sm lbl-quickinfo ProductMoreInfo NoHref mr-1 pos-s ra-tl-s-4 ra-tr-s-4 ra-br-s-4 ra-bl-s-4" title="Rychlé info">
+                  <i class="fa fa-info" aria-hidden="true"></i>
+                  <span class="sr-only">Rychlé info</span>
+                </a>
+	            </div>
+            </td>
+            <td class="pit-price"></td>
+            <td class="pit-quantity">
+              <input disabled type="text" value="${prod.quantity}" name="${prod.productId}_quantity" class="form-control" style="width: 70px; text-align: center;">
+            </td>
+            <td class="pit-button">
+              <a href="#" class="bg-se ml-3 fg btn NoHref AddProductToCart AddProductToCartInitialized" title="Do košíku" role="button">
+                <i class="fa fa-shopping-cart fa-lg" aria-hidden="true"></i>
+              </a>
+            </td>
+          `;
+        tbody.appendChild(row);
+        updateProductRow(row, prod.link);
+        setTimeout(() => {
+          row.style.filter = "";
+        }, 1000);
+      });
+    }
+    function removeOhrevVodyRows() {
+      const rows = document.querySelectorAll(".ohrev-vody-row");
+      rows.forEach((row) => row.parentNode.removeChild(row));
+    }
+
+    /* --- Step 8: Vstup do bazénu --- */
+    function buildVstupOptions() {
+      const currentData = originalResultsData[selectedPoolSize];
+      const vstupBase = currentData.find(
+        (item) => item.name === "Vstup do bazénu"
+      );
+      if (vstupBase && vstupBase.options) {
+        let html = "";
+        Object.keys(vstupBase.options).forEach((key) => {
+          const opt = vstupBase.options[key];
+          html += `<div class="custom-control custom-radio custom-control-inline">
+                       <input type="radio" id="vstup_${key}" name="vstupVariant" class="custom-control-input" value="${key}">
+                       <label class="custom-control-label" for="vstup_${key}">${opt.optionName}</label>
+                     </div>`;
+        });
+        vstupChoices.innerHTML = html;
+        attachVstupListeners();
+      }
+    }
+    function attachVstupListeners() {
+      Array.from(document.getElementsByName("vstupVariant")).forEach(
+        (radio) => {
+          radio.addEventListener("change", function () {
+            chosenVstupKey = this.value;
+            if (!tableRendered) {
+              tryShowFinalTable();
+            } else {
+              updateVstupRows();
+            }
+          });
+        }
+      );
+    }
+    function updateVstupRows() {
+      const currentData = JSON.parse(
+        JSON.stringify(originalResultsData[selectedPoolSize])
+      );
+      const vstupBase = currentData.find(
+        (item) => item.name === "Vstup do bazénu"
+      );
+      if (!vstupBase || !vstupBase.options) return;
+      const selectedOption = vstupBase.options[chosenVstupKey];
+      // If chosen option is D1 or D2, reset the extra updates.
+      if (!selectedOption.products || selectedOption.hidden) {
+        removeVstupRows();
+        resetBaseRowsForVstup();
+        return;
+      }
+      const tbody = document.querySelector(
+        "#snippet-products-productList table tbody"
+      );
+      removeVstupRows();
+      selectedOption.products.forEach((prod) => {
+        if (prod.productId) {
+          let row = Array.from(
+            document.querySelectorAll(
+              "#snippet-products-productList table tbody tr"
+            )
+          ).find(
+            (r) => r.getAttribute("data-product-id") === String(prod.productId)
+          );
+          if (row) {
+            row.style.filter = "blur(4px)";
+            const baseQty = Number(row.getAttribute("data-base-quantity"));
+            const newQty = baseQty + prod.quantity;
+            row.querySelector(".pit-quantity input").value = newQty;
+            setTimeout(() => {
+              row.style.filter = "";
+            }, 1000);
+          } else {
+            const newRow = document.createElement("tr");
+            newRow.className = "SNIitem vstup-row";
+            newRow.setAttribute("data-product-id", prod.productId);
+            newRow.setAttribute("data-product-link", prod.link);
+            newRow.style.filter = "blur(4px)";
+            newRow.innerHTML = `
+                <td class="pit-category"><strong>Vstup do bazénu</strong></td>
+                <td class="pit-image"><a href="${prod.link}" class="ta-c d-block" target="_blank"></a></td>
+                <td class="pit-name">
+                  <a href="${prod.link}" target="_blank" class="bw-y fw-b mr-1"></a>
+                  <div class=" labels ml-1">
+	                  <a href="#" class="btn fg bg-de ico-sm lbl-quickinfo ProductMoreInfo NoHref mr-1 pos-s ra-tl-s-4 ra-tr-s-4 ra-br-s-4 ra-bl-s-4" title="Rychlé info">
+                      <i class="fa fa-info" aria-hidden="true"></i>
+                      <span class="sr-only">Rychlé info</span>
+                    </a>
+	                </div>
+                </td>
+                <td class="pit-price"></td>
+                <td class="pit-quantity"><input disabled type="text" value="${prod.quantity}" name="${prod.productId}_quantity" class="form-control" style="width: 70px; text-align: center;"></td>
+                <td class="pit-button"><a href="#" class="bg-se ml-3 fg btn NoHref AddProductToCart AddProductToCartInitialized" title="Do košíku" role="button"><i class="fa fa-shopping-cart fa-lg" aria-hidden="true"></i></a></td>
+              `;
+            tbody.appendChild(newRow);
+            updateProductRow(newRow, prod.link);
+            setTimeout(() => {
+              newRow.style.filter = "";
+            }, 1000);
+          }
+        } else if (prod.name) {
+          let row = Array.from(
+            document.querySelectorAll(
+              "#snippet-products-productList table tbody tr"
+            )
+          ).find(
+            (r) =>
+              r.querySelector(".pit-category strong").textContent.trim() ===
+              prod.name
+          );
+          if (row) {
+            row.style.filter = "blur(4px)";
+            const baseQty = Number(row.getAttribute("data-base-quantity"));
+            const newQty = baseQty + prod.quantity;
+            row.querySelector(".pit-quantity input").value = newQty;
+            setTimeout(() => {
+              row.style.filter = "";
+            }, 1000);
+          }
+        }
+      });
+    }
+    function removeVstupRows() {
+      const rows = document.querySelectorAll(".vstup-row");
+      rows.forEach((row) => row.parentNode.removeChild(row));
+    }
+    // Reset the base quantities for "Fólie - běžné metry", "Plech vnější" and "Plech vnitřní".
+    function resetBaseRowsForVstup() {
+      let folieRow = Array.from(
+        document.querySelectorAll(
+          "#snippet-products-productList table tbody tr"
+        )
+      ).find(
+        (r) =>
+          r.querySelector(".pit-category strong").textContent.trim() ===
+          "Fólie - běžné metry"
+      );
+      if (folieRow) {
+        let baseQty = folieRow.getAttribute("data-base-quantity");
+        folieRow.querySelector(".pit-quantity input").value = baseQty;
+      }
+      let plechVnejsiRow = Array.from(
+        document.querySelectorAll(
+          "#snippet-products-productList table tbody tr"
+        )
+      ).find(
+        (r) =>
+          r.querySelector(".pit-category strong").textContent.trim() ===
+          "Plech vnější"
+      );
+      if (plechVnejsiRow) {
+        let baseQty = plechVnejsiRow.getAttribute("data-base-quantity");
+        plechVnejsiRow.querySelector(".pit-quantity input").value = baseQty;
+      }
+      let plechVnitrniRow = Array.from(
+        document.querySelectorAll(
+          "#snippet-products-productList table tbody tr"
+        )
+      ).find(
+        (r) =>
+          r.querySelector(".pit-category strong").textContent.trim() ===
+          "Plech vnitřní"
+      );
+      if (plechVnitrniRow) {
+        let baseQty = plechVnitrniRow.getAttribute("data-base-quantity");
+        plechVnitrniRow.querySelector(".pit-quantity input").value = baseQty;
+      }
+    }
+
+    /* --- Final Table Rendering --- */
+    function renderResultsTable(dataList) {
+      let tableHTML =
+        '<div class="table-responsive anim-xs-two anim-i anim-fade p-l-table mb-0 anim-y">';
+      tableHTML +=
+        '<table class="table table-head-n table-condensed table-items table-hover x b bo-b-s-1 ta-l p-i-table bg-de">';
+      tableHTML += "<thead><tr>";
+      tableHTML += "<th>Kategorie</th>";
+      tableHTML += "<th></th>";
+      tableHTML += "<th>Název</th>";
+      tableHTML += "<th>Cena/jedn.</th>";
+      tableHTML += "<th>Množství</th>";
+      tableHTML += "<th></th>";
+      tableHTML += "</tr></thead>";
+      tableHTML += "<tbody>";
+      dataList.forEach((item) => {
+        tableHTML += `<tr class="SNIitem" data-product-id="${
+          item.productId || ""
+        }" data-product-link="${item.link || ""}" data-base-quantity="${
+          item.quantity
+        }">
+            <td class="pit-category"><strong>${item.name}</strong></td>
+            <td class="pit-image"><a href="${
+              item.link || "#"
+            }" class="ta-c d-block" target="_blank"></a></td>
+            <td class="pit-name">
+              <a href="${
+                item.link || "#"
+              }" target="_blank" class="bw-y fw-b mr-1"></a>
+              <div class=" labels ml-1">
+	              <a href="#" class="btn fg bg-de ico-sm lbl-quickinfo ProductMoreInfo NoHref mr-1 pos-s ra-tl-s-4 ra-tr-s-4 ra-br-s-4 ra-bl-s-4" title="Rychlé info">
+                  <i class="fa fa-info" aria-hidden="true"></i>
+                  <span class="sr-only">Rychlé info</span>
+                </a>
+	            </div>
+            </td>
+            <td class="pit-price"></td>
+            <td class="pit-quantity"><input disabled type="text" value="${
+              item.quantity
+            }" name="${
+          item.productId || ""
+        }_quantity" class="form-control" style="width: 70px; text-align: center;"></td>
+            <td class="pit-button"><a href="#" class="bg-se ml-3 fg btn NoHref AddProductToCart AddProductToCartInitialized" title="Do košíku" role="button"><i class="fa fa-shopping-cart fa-lg" aria-hidden="true"></i></a></td>
+          </tr>`;
+      });
+      tableHTML += "</tbody></table></div>";
+      return { header: "Produkty:", table: tableHTML };
+    }
+
+    function updateAllProductRows() {
+      const rows = document.querySelectorAll(".SNIitem");
+      rows.forEach((row) => {
+        const link = row.getAttribute("data-product-link");
+        if (link && link !== "#") updateProductRow(row, link);
+      });
+    }
+    function updateProductRow(row, productLink) {
+      fetch(productLink)
+        .then((response) => response.text())
+        .then((html) => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, "text/html");
+          const priceEl = doc.querySelector('[itemprop="price"]');
+          if (priceEl) {
+            const livePrice =
+              priceEl.getAttribute("content") || priceEl.textContent.trim();
+            if (livePrice)
+              row.querySelector(
+                ".pit-price"
+              ).innerHTML = `<strong style="white-space: nowrap;">${livePrice}&nbsp;Kč</strong>`;
+          }
+          const nameEl = doc.querySelector('h1[itemprop="name"]');
+          if (nameEl) {
+            let liveName = "";
+            const variantSpan = nameEl.querySelector(".h1AddVariant");
+            if (variantSpan) liveName = variantSpan.textContent.trim();
+            else
+              liveName =
+                nameEl.getAttribute("content") || nameEl.textContent.trim();
+            if (liveName)
+              row.querySelector(".pit-name a").textContent = liveName;
+          }
+          const imageEl = doc.querySelector('[itemprop="image"]');
+          if (imageEl) {
+            const liveImage =
+              imageEl.getAttribute("src") ||
+              imageEl.getAttribute("content") ||
+              imageEl.textContent.trim();
+            if (liveImage)
+              row.querySelector(
+                ".pit-image a"
+              ).innerHTML = `<img src="${liveImage}" srcset="${liveImage} 1x, ${liveImage} 2x" width="60" height="60" class="img-thumbnail" alt="${
+                row.querySelector(".pit-name a").textContent
+              }">`;
+          }
+        })
+        .catch((err) =>
+          console.error("Error fetching live product data:", err)
+        );
+    }
+
+    function tryShowFinalTable() {
+      if (
+        selectedDepth &&
+        selectedPoolSize &&
+        chosenFolieKey &&
+        chosenProtiproudKey &&
+        chosenUpravaVodyKey &&
+        chosenOhrevVodyKey &&
+        chosenOsvetleniKey &&
+        chosenVstupKey
+      ) {
+        let tableData = JSON.parse(
+          JSON.stringify(originalResultsData[selectedPoolSize])
+        );
+        // Update Fólie row.
+        let folieRow = tableData.find(
+          (item) => item.name === "Fólie - běžné metry"
+        );
+        if (folieRow && folieVariants[chosenFolieKey]) {
+          const updatedFolie = Object.assign(
+            {},
+            folieVariants[chosenFolieKey],
+            { quantity: folieRow.quantity, name: folieRow.name }
+          );
+          tableData = tableData.map((item) =>
+            item.name === "Fólie - běžné metry" ? updatedFolie : item
+          );
+        }
+        // Remove base rows for extra options.
+        tableData = tableData.filter(
+          (item) =>
+            item.name !== "Protiproud" &&
+            item.name !== "Úprava vody" &&
+            item.name !== "Ohřev vody" &&
+            item.name !== "Osvětlení" &&
+            item.name !== "Vstup do bazénu"
+        );
+        snippetContainer.innerHTML = renderResultsTable(tableData).table;
+        resultHeader.innerText = "Produkty:";
+        resultsContainer.classList.remove("hidden");
+        resultsContainer.classList.add("fade-in");
+        tableRendered = true;
+        const tableEl = document.getElementById("snippet-products-productList");
+        tableEl.style.filter = "blur(4px)";
+        updateAllProductRows();
+        setTimeout(() => {
+          tableEl.style.filter = "";
+          updateFolieRow();
+          updateProtiproudRow();
+          updateUpravaVodyRows();
+          updateOhrevVodyRows();
+          updateOsvetleniRows();
+          updateVstupRows();
+        }, 4000);
+      }
+    }
+  </script>
+</p>

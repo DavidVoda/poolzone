@@ -4,6 +4,16 @@ from urllib.parse import urlparse
 from unidecode import unidecode
 import pandas as pd
 
+# Načtení Excel souboru pro cenotvorbu
+cenotvorba_df = pd.read_excel('produkty_cenotvorba.xlsx')
+
+# Kód produktů, na které neplatí sleva a mají svůj vlastní koeficient
+codes = {}
+for index, row in cenotvorba_df.iterrows():
+    product_code = str(row['Kód']).strip()
+    coefficient = float(row['Koeficient'])
+    codes[product_code] = coefficient
+
 # Načtení Excel souboru a odstranění prázdných řádků
 poolzone_df = pd.read_excel('poolzone_categories.xlsx')
 
@@ -82,23 +92,34 @@ for shopitem in root.findall('SHOPITEM'):
     price_vat = shopitem.find('PRICE_VAT')
     item_id = shopitem.find('ITEM_ID')
     if price_vat is not None:
+        realPrice_discount = 0.12
         aseko_discount = 0.32
         others_discount = 0.45
         tax_rate = 0.21
         
         price_vat =  float(price_vat.text.replace(',','.'))
-        price_without_vat = price_vat / (1 + tax_rate)
-        price_purchase = price_without_vat * (1 - others_discount)
-    
-        # Pokud je produkt od Aseko (kód začíná na "AK") tak se počítá menší sleva
+
         if item_id.text.startswith("AK"):
-            price_purchase = price_without_vat * (1 - aseko_discount)
+            price_without_vat = price_vat / (1 + tax_rate)
+            price_purchase = price_without_vat * ((1 - aseko_discount) * (1 + tax_rate))
+            # Produkt v codes z produkty_cenotvorba.xsls - tedy produkt s přirážkou nebo bez slevy 
+            # U produktů z Aseka ale není sleva, takže jen s přirážkou
+            if item_id.text in codes:
+                price_vat = price_vat * codes[item_id.text]
+        else:
+            price_without_vat = price_vat / (1 + tax_rate)
+            price_purchase = price_without_vat * ((1 - others_discount) * (1 + tax_rate))
+            # Produkt v codes z produkty_cenotvorba.xsls - tedy produkt s přirážkou nebo bez slevy
+            if item_id.text in codes:
+                price_vat = price_vat * codes[item_id.text]
+            else:
+                price_vat = price_vat * (1 - realPrice_discount)
 
         prices = ET.SubElement(product, 'PRICES')
         price = ET.SubElement(prices, 'PRICE', language='cs')
         create_sub_element(price, 'PRICE_PURCHASE', price_purchase)
-        price_lists = ET.SubElement(price, 'PRICELISTS',)
-        price_list = ET.SubElement(price_lists, 'PRICELIST',)
+        price_lists = ET.SubElement(price, 'PRICELISTS')
+        price_list = ET.SubElement(price_lists, 'PRICELIST')
         create_sub_element(price_list, 'PRICE_ORIGINAL', price_vat)
 
     # Mapování CATEGORYTEXT na CATEGORIES/CATEGORY/CODE
@@ -141,10 +162,12 @@ for shopitem in root.findall('SHOPITEM'):
             # Přejít na další nadřazenou kategorii
             parent_category = next_parent_category
 
-    # Mapování EAN na EAN
-    ean = shopitem.find('EAN')
-    if ean is not None:
-        create_sub_element(product, 'EAN', ean.text)
+    ## Po konzultaci s Jonášem bude všude null
+    ## Protože EAN buď není nebo nemá správný formát a rozbíjí to srovnávače (Google Merchant, Zbozi.cz atd.)
+    ## Mapování EAN na EAN
+    #ean = shopitem.find('EAN')
+    #if ean is not None:
+        create_sub_element(product, 'EAN', '')
 
     # Mapování stock_quantity na STOCK/AMOUNT
     stock_quantity = shopitem.find('stock_quantity')
