@@ -18,7 +18,7 @@ for index, row in cenotvorba_df.iterrows():
 poolzone_df = pd.read_excel('poolzone_categories.xlsx')
 
 # URL feedu
-feed_url = "https://www.pooltechnika.cz/feed/heureka?token=5f0dac7b23e1d"
+feed_url = "https://www.pooltechnika.cz/feed/heureka?token=5f0dac7b23e1d&customer=231"
 
 # Extrakce domény z feedu
 parsed_url = urlparse(feed_url)
@@ -64,15 +64,6 @@ for shopitem in root.findall('SHOPITEM'):
         description = ET.SubElement(descriptions, 'DESCRIPTION', language='cs')
         create_sub_element(description, 'TITLE', productname.text)
 
-    ## Po konzultaci s Jonášem zatím odebíráme (pravděpodobně na furt)
-    ## Mapování DESCRIPTION na DESCRIPTIONS/DESCRIPTION/LONG_DESCRIPTION
-    #description_text = shopitem.find('DESCRIPTION')
-    #if description_text is not None:
-    #    if 'descriptions' not in locals():
-    #        descriptions = ET.SubElement(product, 'DESCRIPTIONS')
-    #        description = ET.SubElement(descriptions, 'DESCRIPTION', language='cs')
-    #    create_sub_element(description, 'LONG_DESCRIPTION', description_text.text)
-
     # Mapování URL na DESCRIPTIONS/DESCRIPTION/URL
     url = shopitem.find('URL')
     if url is not None:
@@ -92,7 +83,7 @@ for shopitem in root.findall('SHOPITEM'):
     price_vat = shopitem.find('PRICE_VAT')
     item_id = shopitem.find('ITEM_ID')
     if price_vat is not None:
-        realPrice_discount = 0.12
+        realPrice_discount = 0.15
         aseko_discount = 0.32
         others_discount = 0.45
         tax_rate = 0.21
@@ -118,6 +109,7 @@ for shopitem in root.findall('SHOPITEM'):
         prices = ET.SubElement(product, 'PRICES')
         price = ET.SubElement(prices, 'PRICE', language='cs')
         create_sub_element(price, 'PRICE_PURCHASE', price_purchase)
+        create_sub_element(price, 'PRICE_COMMON', price_vat)
         price_lists = ET.SubElement(price, 'PRICELISTS')
         price_list = ET.SubElement(price_lists, 'PRICELIST')
         create_sub_element(price_list, 'PRICE_ORIGINAL', price_vat)
@@ -162,37 +154,32 @@ for shopitem in root.findall('SHOPITEM'):
             # Přejít na další nadřazenou kategorii
             parent_category = next_parent_category
 
-    ## Po konzultaci s Jonášem bude všude null
-    ## Protože EAN buď není nebo nemá správný formát a rozbíjí to srovnávače (Google Merchant, Zbozi.cz atd.)
-    ## Mapování EAN na EAN
-    #ean = shopitem.find('EAN')
-    #if ean is not None:
+    # Mapování EAN na EAN
+    # Po konzultaci s Jonášem bude vždy prázdný, protože vyplněný EAN rozbíjí srovnávače (Google Merchant, Zbozi.cz atd.)
+    ean = shopitem.find('EAN')
+    if ean is not None:
         create_sub_element(product, 'EAN', '')
 
-    # Mapování stock_quantity na STOCK/AMOUNT
+    # Mapování EAN na SUPPLIER_CODE
+    if ean is not None:
+        create_sub_element(product, 'SUPPLIER_CODE', ean.text)
+
+    # Mapování stock_quantity na STOCK
     stock_quantity = shopitem.find('stock_quantity')
     if stock_quantity is not None:
         stock = ET.SubElement(product, 'STOCK')
         stock.text = stock_quantity.text
 
-    ## DELIVERY_DATE je vždy 0 nebo null
-    ## Mapování DELIVERY_DATE na AVAILABILITY
-    #delivery_date = shopitem.find('DELIVERY_DATE')
-    #if delivery_date is not None:
-    #    create_sub_element(product, 'AVAILABILITY', delivery_date.text)
-
-    ## Po konzultaci s Jonášem zatím odebíráme (pravděpodobně na furt)
-    ## Mapování PARAM na PARAMETERS/PARAMETER
-    #params = shopitem.findall('PARAM')
-    #if params:
-    #    parameters = ET.SubElement(product, 'PARAMETERS')
-    #    for param in params:
-    #        parameter = ET.SubElement(parameters, 'PARAMETER')
-    #        param_name = param.find('PARAM_NAME')
-    #        param_value = param.find('VAL')
-    #        if param_name is not None and param_value is not None:
-    #            create_sub_element(parameter, 'NAME', param_name.text)
-    #            create_sub_element(parameter, 'VALUE', param_value.text)
+    # Mapování PARAM s VAL na WEIGHT
+    # V PARAM by měl být vždy jen jeden a v něm PARAM_NAME "Hmotnost", takže můžeme přímo hledat tento PARAM a jeho VAL pro vytvoření elementu WEIGHT
+    # Pokud by bylo více PARAM, tak budeme muset upravit logiku, aby hledala konkrétně ten s PARAM_NAME "Hmotnost" - případně další
+    # Hmotnost chodí v gramech a má být v gramech, je ale potřeba odstranit jednotku "g" a případné mezery, aby zůstalo jen číslo
+    param = shopitem.find('PARAM')
+    if param is not None:
+        weight_value = param.find('VAL')
+        if weight_value is not None:
+            weight_value = weight_value.text.strip().replace('g', '').replace(' ', '')
+            create_sub_element(product, 'WEIGHT', weight_value)
 
 # Zápis výstupního XML do souboru
 output_file = 'poolzone_products.xml'
