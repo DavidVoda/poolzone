@@ -18,7 +18,7 @@ for index, row in cenotvorba_df.iterrows():
 poolzone_df = pd.read_excel('poolzone_categories.xlsx')
 
 # URL feedu
-feed_url = "https://www.pooltechnika.cz/feed/heureka?token=5f0dac7b23e1d&customer=231"
+feed_url = "https://www.pooltechnika.cz/feed/heureka?token=5f0dac7b23e1d&"
 
 # Extrakce domény z feedu
 parsed_url = urlparse(feed_url)
