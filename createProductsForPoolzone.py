@@ -18,7 +18,7 @@ for index, row in cenotvorba_df.iterrows():
 poolzone_df = pd.read_excel('poolzone_categories.xlsx')
 
 # URL feedu
-feed_url = "https://www.pooltechnika.cz/feed/heureka?token=5f0dac7b23e1d&"
+feed_url = "https://www.pooltechnika.cz/feed/heureka?token=5f0dac7b23e1d&customer=231"
 
 # Extrakce domény z feedu
 parsed_url = urlparse(feed_url)
@@ -83,36 +83,44 @@ for shopitem in root.findall('SHOPITEM'):
     price_vat = shopitem.find('PRICE_VAT')
     item_id = shopitem.find('ITEM_ID')
     if price_vat is not None:
-        realPrice_discount = 0.15
-        aseko_discount = 0.32
-        others_discount = 0.45
+        aseko_margin = 1 / (1 - 0.35) 
+        #výpočet pro doporučenou MOC bez DPH - cena bez dph 1/0.65 - 35% marže
+        aseko_margin2 = 1 / (1 - 0.34) 
+        #výpočet pro naši MOC bez DPH - cena bez dph 1/0.66 - zůstane nám 34% marže 
+        others_margin = 1 / (1 - 0.45) 
+        #výpočet pro doporučenou MOC bez DPH - cena bez dph 1/0.55 - 45% marže
+        others_margin2 = 1 / (1 - 0.35) 
+        #výpočet pro naši MOC bez DPH - cena bez dph 1/0.65 - zůstane nám 35% marže
         tax_rate = 0.21
         
         price_vat =  float(price_vat.text.replace(',','.'))
+        price_purchase = price_vat 
+        #pooltechnika označuje naši nákupní cenu jako price_vat 
 
         if item_id.text.startswith("AK"):
-            price_without_vat = price_vat / (1 + tax_rate)
-            price_purchase = price_without_vat * ((1 - aseko_discount) * (1 + tax_rate))
+            price_without_vat = price_vat * aseko_margin2
             # Produkt v codes z produkty_cenotvorba.xsls - tedy produkt s přirážkou nebo bez slevy 
-            # U produktů z Aseka ale není sleva, takže jen s přirážkou
+
             if item_id.text in codes:
-                price_vat = price_vat * codes[item_id.text]
+                price_without_vat = price_without_vat * codes[item_id.text]
         else:
-            price_without_vat = price_vat / (1 + tax_rate)
-            price_purchase = price_without_vat * ((1 - others_discount) * (1 + tax_rate))
+            price_without_vat = price_vat * others_margin2
             # Produkt v codes z produkty_cenotvorba.xsls - tedy produkt s přirážkou nebo bez slevy
             if item_id.text in codes:
-                price_vat = price_vat * codes[item_id.text]
-            else:
-                price_vat = price_vat * (1 - realPrice_discount)
+                price_without_vat = price_without_vat * codes[item_id.text] 
+            #prodejní cena bez DPH se násobí koeficientem v tabulce
+
 
         prices = ET.SubElement(product, 'PRICES')
         price = ET.SubElement(prices, 'PRICE', language='cs')
-        create_sub_element(price, 'PRICE_PURCHASE', price_purchase)
-        create_sub_element(price, 'PRICE_COMMON', price_vat)
+        create_sub_element(price, 'PRICE_PURCHASE', price_purchase) 
+        #nákupní cena bez DPH
+        create_sub_element(price, 'PRICE_COMMON', price_without_vat) 
+        #běžná cena
         price_lists = ET.SubElement(price, 'PRICELISTS')
         price_list = ET.SubElement(price_lists, 'PRICELIST')
-        create_sub_element(price_list, 'PRICE_ORIGINAL', price_vat)
+        create_sub_element(price_list, 'PRICE_ORIGINAL', price_without_vat) 
+        #prodejní cena bez DPH
 
     # Mapování CATEGORYTEXT na CATEGORIES/CATEGORY/CODE
     categorytext = shopitem.find('CATEGORYTEXT')
