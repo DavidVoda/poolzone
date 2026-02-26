@@ -95,20 +95,20 @@ for shopitem in root.findall('SHOPITEM'):
         
         price_vat =  float(price_vat.text.replace(',','.'))
         price_purchase = price_vat 
-        #pooltechnika označuje naši nákupní cenu jako price_vat 
+        #pooltechnika označuje naši nákupní cenu jako price_vat
 
         if item_id.text.startswith("AK"):
-            price_without_vat = price_vat * aseko_margin2
-            # Produkt v codes z produkty_cenotvorba.xsls - tedy produkt s přirážkou nebo bez slevy 
-
             if item_id.text in codes:
+                price_without_vat = price_vat * aseko_margin
                 price_without_vat = price_without_vat * codes[item_id.text]
-        else:
-            price_without_vat = price_vat * others_margin2
-            # Produkt v codes z produkty_cenotvorba.xsls - tedy produkt s přirážkou nebo bez slevy
+            else:
+                price_without_vat = price_vat * aseko_margin2
+        else:        
             if item_id.text in codes:
-                price_without_vat = price_without_vat * codes[item_id.text] 
-            #prodejní cena bez DPH se násobí koeficientem v tabulce
+                price_without_vat = price_vat * others_margin
+                price_without_vat = price_without_vat * codes[item_id.text]
+            else:
+                price_without_vat = price_vat * others_margin2
 
 
         prices = ET.SubElement(product, 'PRICES')
