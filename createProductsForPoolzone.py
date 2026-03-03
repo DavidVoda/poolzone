@@ -83,9 +83,9 @@ for shopitem in root.findall('SHOPITEM'):
     price_vat = shopitem.find('PRICE_VAT')
     item_id = shopitem.find('ITEM_ID')
     if price_vat is not None:
-        aseko_margin = 1 / (1 - 0.35) 
+        aseko_margin = 1 / (1 - 0.35)  
         #výpočet pro doporučenou MOC bez DPH - cena bez dph 1/0.65 - 35% marže
-        aseko_margin2 = 1 / (1 - 0.34) 
+        aseko_margin2 = 1 / (1 - 0.34)
         #výpočet pro naši MOC bez DPH - cena bez dph 1/0.66 - zůstane nám 34% marže 
         others_margin = 1 / (1 - 0.45) 
         #výpočet pro doporučenou MOC bez DPH - cena bez dph 1/0.55 - 45% marže
@@ -94,21 +94,28 @@ for shopitem in root.findall('SHOPITEM'):
         tax_rate = 0.21
         
         price_vat =  float(price_vat.text.replace(',','.'))
-        price_purchase = price_vat 
-        #pooltechnika označuje naši nákupní cenu jako price_vat
+        #nákupní cena s DPH z feedu, převod na float a nahrazení případné čárky tečkou pro správný výpočet
+        price_purchase = price_vat / (1 + tax_rate)
+        #pooltechnika označuje naši nákupní cenu s DPH jako price_vat, výpočet slouží k získání nákupní ceny bez DPH, která se v elementu PRICE_PURCHASE očekává
 
         if item_id.text.startswith("AK"):
             if item_id.text in codes:
-                price_without_vat = price_vat * aseko_margin
+                price_without_vat = price_purchase * aseko_margin
+                #výpočet DMOC bez DPH pro produkty Aseko
                 price_without_vat = price_without_vat * codes[item_id.text]
+                #výpočet naší prodejní MOC bez DPH pro produkty Aseko s přihlédnutím k individuálnímu koeficientu z Excelu
             else:
-                price_without_vat = price_vat * aseko_margin2
+                price_without_vat = price_purchase * aseko_margin2
+                #výpočet naší prodejní MOC bez DPH pro produkty Aseko bez individuálního koeficientu z Excelu, u těchto produktů nám zůstává 34% marže
         else:        
             if item_id.text in codes:
-                price_without_vat = price_vat * others_margin
+                price_without_vat = price_purchase * others_margin
+                #výpočet DMOC bez DPH pro ostatní produkty
                 price_without_vat = price_without_vat * codes[item_id.text]
+                #výpočet naší prodejní MOC bez DPH pro ostatní produkty s přihlédnutím k individuálnímu koeficientu z Excelu
             else:
-                price_without_vat = price_vat * others_margin2
+                price_without_vat = price_purchase * others_margin2
+                #výpočet naší prodejní MOC bez DPH pro ostatní produkty bez individuálního koeficientu z Excelu, u těchto produktů nám zůstává 35% marže
 
 
         prices = ET.SubElement(product, 'PRICES')
@@ -116,7 +123,7 @@ for shopitem in root.findall('SHOPITEM'):
         create_sub_element(price, 'PRICE_PURCHASE', price_purchase) 
         #nákupní cena bez DPH
         create_sub_element(price, 'PRICE_COMMON', price_without_vat) 
-        #běžná cena
+        #běžná cena bez DPH
         price_lists = ET.SubElement(price, 'PRICELISTS')
         price_list = ET.SubElement(price_lists, 'PRICELIST')
         create_sub_element(price_list, 'PRICE_ORIGINAL', price_without_vat) 
@@ -182,12 +189,12 @@ for shopitem in root.findall('SHOPITEM'):
     # V PARAM by měl být vždy jen jeden a v něm PARAM_NAME "Hmotnost", takže můžeme přímo hledat tento PARAM a jeho VAL pro vytvoření elementu WEIGHT
     # Pokud by bylo více PARAM, tak budeme muset upravit logiku, aby hledala konkrétně ten s PARAM_NAME "Hmotnost" - případně další
     # Hmotnost chodí v gramech a má být v gramech, je ale potřeba odstranit jednotku "g" a případné mezery, aby zůstalo jen číslo
-    param = shopitem.find('PARAM')
-    if param is not None:
-        weight_value = param.find('VAL')
-        if weight_value is not None:
-            weight_value = weight_value.text.strip().replace('g', '').replace(' ', '')
-            create_sub_element(product, 'WEIGHT', weight_value)
+    #param = shopitem.find('PARAM')
+    #if param is not None:
+    #    weight_value = param.find('VAL')
+    #    if weight_value is not None:
+    #        weight_value = weight_value.text.strip().replace('g', '').replace(' ', '')
+    #        create_sub_element(product, 'WEIGHT', weight_value)
 
 # Zápis výstupního XML do souboru
 output_file = 'poolzone_products.xml'
