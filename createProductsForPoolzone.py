@@ -189,12 +189,15 @@ for shopitem in root.findall('SHOPITEM'):
     # V PARAM by měl být vždy jen jeden a v něm PARAM_NAME "Hmotnost", takže můžeme přímo hledat tento PARAM a jeho VAL pro vytvoření elementu WEIGHT
     # Pokud by bylo více PARAM, tak budeme muset upravit logiku, aby hledala konkrétně ten s PARAM_NAME "Hmotnost" - případně další
     # Hmotnost chodí v gramech a má být v gramech, je ale potřeba odstranit jednotku "g" a případné mezery, aby zůstalo jen číslo
-    #param = shopitem.find('PARAM')
-    #if param is not None:
-    #    weight_value = param.find('VAL')
-    #    if weight_value is not None:
-    #        weight_value = weight_value.text.strip().replace('g', '').replace(' ', '')
-    #        create_sub_element(product, 'WEIGHT', weight_value)
+    for param in shopitem.findall('PARAM'):
+        param_name = param.find('PARAM_NAME')
+        val = param.find('VAL')
+
+        if param_name is not None and val is not None:
+            if param_name.text.strip() == "Hmotnost":
+                weight_value = val.text.strip().replace('g', '').replace(' ', '')
+                create_sub_element(product, 'WEIGHT', weight_value)
+                break  # máme → končíme
 
 # Zápis výstupního XML do souboru
 output_file = 'poolzone_products.xml'
