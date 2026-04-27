@@ -172,3 +172,8 @@ cython_debug/
 
 #Idea
 .idea
+
+# pricing tool - generated data
+pricing/pricing_app/data/export.csv
+pricing/pricing_app/data/pricing_analysis.csv
+pricing/pricing_app/data/pricing_dataset.csv
