@@ -60,18 +60,28 @@ class Product(Base):
     )
 
     # Relationships
-    parent: Mapped["Product | None"] = relationship(remote_side="Product.id", back_populates="variants")
-    variants: Mapped[list["Product"]] = relationship(back_populates="parent")
-    images: Mapped[list["ProductImage"]] = relationship(back_populates="product", cascade="all, delete-orphan")
-    parameters: Mapped[list["ProductParameter"]] = relationship(back_populates="product", cascade="all, delete-orphan")
-    files: Mapped[list["ProductFile"]] = relationship(back_populates="product", cascade="all, delete-orphan")
+    parent: Mapped[Product | None] = relationship(
+        remote_side="Product.id", back_populates="variants"
+    )
+    variants: Mapped[list[Product]] = relationship(back_populates="parent")
+    images: Mapped[list[ProductImage]] = relationship(
+        back_populates="product", cascade="all, delete-orphan"
+    )
+    parameters: Mapped[list[ProductParameter]] = relationship(
+        back_populates="product", cascade="all, delete-orphan"
+    )
+    files: Mapped[list[ProductFile]] = relationship(
+        back_populates="product", cascade="all, delete-orphan"
+    )
 
 
 class ProductImage(Base):
     __tablename__ = "product_images"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
     url: Mapped[str] = mapped_column(Text, nullable=False)
     alt: Mapped[str | None] = mapped_column(Text, nullable=True)
     ord: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -83,7 +93,9 @@ class ProductParameter(Base):
     __tablename__ = "product_parameters"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
     name_i18n: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     value_i18n: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
@@ -94,7 +106,9 @@ class ProductFile(Base):
     __tablename__ = "product_files"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
     url: Mapped[str] = mapped_column(Text, nullable=False)
     kind: Mapped[str] = mapped_column(String(32), nullable=False)  # "pdf_manual", "datasheet", …
 

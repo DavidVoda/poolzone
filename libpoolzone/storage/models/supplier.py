@@ -28,7 +28,9 @@ class SupplierProduct(Base):
     __table_args__ = (UniqueConstraint("supplier_id", "supplier_code"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id", ondelete="CASCADE"), index=True)
+    supplier_id: Mapped[int] = mapped_column(
+        ForeignKey("suppliers.id", ondelete="CASCADE"), index=True
+    )
     supplier_code: Mapped[str] = mapped_column(String(64), index=True)
     raw_payload: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     supplier_category_path: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -45,6 +47,8 @@ class SupplierCategoryMapping(Base):
     __table_args__ = (UniqueConstraint("supplier_id", "supplier_path"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id", ondelete="CASCADE"), index=True)
+    supplier_id: Mapped[int] = mapped_column(
+        ForeignKey("suppliers.id", ondelete="CASCADE"), index=True
+    )
     supplier_path: Mapped[str] = mapped_column(Text)
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id", ondelete="CASCADE"))

@@ -57,12 +57,8 @@ def test_product_can_have_primary_category(db_session):
 
     p = products_svc.create_product(db_session, code="P_E2E", titles={"cs": "E2E"})
 
-    cats_svc.link_product(
-        db_session, product_id=p.id, category_id=cat_child.id, primary_yn=True
-    )
-    cats_svc.link_product(
-        db_session, product_id=p.id, category_id=cat_root.id, primary_yn=False
-    )
+    cats_svc.link_product(db_session, product_id=p.id, category_id=cat_child.id, primary_yn=True)
+    cats_svc.link_product(db_session, product_id=p.id, category_id=cat_root.id, primary_yn=False)
 
     refreshed = db_session.get(Product, p.id)
     # Sanity: product exists and categories don't crash

@@ -31,11 +31,7 @@ def test_link_product_to_category_with_primary(db_session):
 
     cats_svc.link_product(db_session, product_id=p.id, category_id=cat.id, primary_yn=True)
 
-    link = (
-        db_session.query(ProductCategory)
-        .filter_by(product_id=p.id, category_id=cat.id)
-        .one()
-    )
+    link = db_session.query(ProductCategory).filter_by(product_id=p.id, category_id=cat.id).one()
     assert link.primary_yn is True
 
 
@@ -46,10 +42,6 @@ def test_link_product_twice_is_idempotent(db_session):
     cats_svc.link_product(db_session, product_id=p.id, category_id=cat.id, primary_yn=False)
     cats_svc.link_product(db_session, product_id=p.id, category_id=cat.id, primary_yn=True)
 
-    links = (
-        db_session.query(ProductCategory)
-        .filter_by(product_id=p.id, category_id=cat.id)
-        .all()
-    )
+    links = db_session.query(ProductCategory).filter_by(product_id=p.id, category_id=cat.id).all()
     assert len(links) == 1
     assert links[0].primary_yn is True  # updated on second call

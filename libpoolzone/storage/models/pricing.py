@@ -30,7 +30,9 @@ class CompetitorPrice(Base):
     __tablename__ = "competitor_prices"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
     competitor_name: Mapped[str] = mapped_column(String(64))
     url: Mapped[str] = mapped_column(Text)
     price_with_vat: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)

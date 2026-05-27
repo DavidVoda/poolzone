@@ -66,7 +66,7 @@ def test_apply_changes_respecting_locks_skips_locked_fields(db_session):
 
     refreshed = db_session.get(Product, p.id)
     assert refreshed.price_common == Decimal("200")  # locked, unchanged
-    assert refreshed.stock == 50                      # not locked, updated
+    assert refreshed.stock == 50  # not locked, updated
     assert stats["updated"] == 1
     assert stats["locked_skips"] == 1
 
@@ -76,5 +76,7 @@ def test_list_locks_for_product(db_session):
     locks_svc.lock_field(db_session, product_id=p.id, field_path="price.common")
     locks_svc.lock_field(db_session, product_id=p.id, field_path="descriptions.cs.long")
 
-    paths = {l.field_path for l in locks_svc.list_locks_for_product(db_session, product_id=p.id)}
+    paths = {
+        lock.field_path for lock in locks_svc.list_locks_for_product(db_session, product_id=p.id)
+    }
     assert paths == {"price.common", "descriptions.cs.long"}

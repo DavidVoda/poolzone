@@ -1,4 +1,5 @@
 """Field-level locks: prevent supplier sync from overwriting human-edited fields."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -50,17 +51,13 @@ def lock_field(
 
 
 def unlock_field(session: Session, *, product_id: int, field_path: str) -> None:
-    session.query(ProductFieldLock).filter_by(
-        product_id=product_id, field_path=field_path
-    ).delete()
+    session.query(ProductFieldLock).filter_by(product_id=product_id, field_path=field_path).delete()
     session.flush()
 
 
 def list_locks_for_product(session: Session, *, product_id: int) -> list[ProductFieldLock]:
     return list(
-        session.scalars(
-            select(ProductFieldLock).where(ProductFieldLock.product_id == product_id)
-        )
+        session.scalars(select(ProductFieldLock).where(ProductFieldLock.product_id == product_id))
     )
 
 

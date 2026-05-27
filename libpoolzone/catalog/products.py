@@ -4,6 +4,7 @@ Callers (importers, exporter, API) should go through these functions
 rather than touching the ORM directly. This keeps invariants (e.g.
 field locks) enforced in one place.
 """
+
 from __future__ import annotations
 
 from decimal import Decimal

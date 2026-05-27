@@ -1,4 +1,5 @@
 """Category CRUD service: tree management + product linking."""
+
 from __future__ import annotations
 
 from sqlalchemy import select

@@ -16,7 +16,9 @@ class ProductFieldLock(Base):
     __table_args__ = (UniqueConstraint("product_id", "field_path"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
     field_path: Mapped[str] = mapped_column(String(128))
     locked_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

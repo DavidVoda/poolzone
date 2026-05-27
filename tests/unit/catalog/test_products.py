@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from libpoolzone.catalog import products as products_svc
 from libpoolzone.storage.models import Product
@@ -59,6 +60,6 @@ def test_update_product_fields_writes_changes(db_session):
 def test_create_product_with_duplicate_code_raises(db_session):
     products_svc.create_product(db_session, code="DUP", titles={"cs": "X"})
 
-    with pytest.raises(Exception):  # SQLAlchemy IntegrityError wrapped
+    with pytest.raises(IntegrityError):
         products_svc.create_product(db_session, code="DUP", titles={"cs": "Y"})
         db_session.flush()
