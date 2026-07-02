@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SHOP>
+  <SHOPITEM>
+    <ITEM_ID>AK13327</ITEM_ID>
+    <PRODUCTNAME>OXY Pure Ag 5L</PRODUCTNAME>
+    <URL>https://www.pooltechnika.cz/oxy-pure-ag-5l</URL>
+    <IMGURL>https://img.pooltechnika.cz/oxy5l.jpg</IMGURL>
+    <PRICE_VAT>1210,00</PRICE_VAT>
+    <EAN>8594000000017</EAN>
+    <MANUFACTURER>Aseko</MANUFACTURER>
+    <CATEGORYTEXT>Chemie | Kyslíková</CATEGORYTEXT>
+    <stock_quantity>7</stock_quantity>
+    <PARAM>
+      <PARAM_NAME>Hmotnost</PARAM_NAME>
+      <VAL>5200 g</VAL>
+    </PARAM>
+    <PARAM>
+      <PARAM_NAME>Objem</PARAM_NAME>
+      <VAL>5 l</VAL>
+    </PARAM>
+  </SHOPITEM>
+  <SHOPITEM>
+    <ITEM_ID>20031-14</ITEM_ID>
+    <PRODUCTNAME>pH minus 35 kg</PRODUCTNAME>
+    <PRICE_VAT>605,00</PRICE_VAT>
+    <CATEGORYTEXT>Chemie | pH</CATEGORYTEXT>
+    <stock_quantity>0</stock_quantity>
+  </SHOPITEM>
+</SHOP>
