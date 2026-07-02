@@ -23,9 +23,10 @@ def load_margin_rules(session: Session) -> dict[str, Decimal]:
 def resolve_margin(product: Product, rules: dict[str, Decimal]) -> Decimal:
     if product.margin_pct is not None:
         return product.margin_pct
-    # Aseko rule keys on the ITEM_ID prefix "AK", not the manufacturer field (matches old script).
-    if product.code.startswith("AK") and "AK" in rules:
-        return rules["AK"]
+    # Non-default rules match on a code prefix (e.g. "AK" = Aseko, from the old script).
+    for prefix, margin in rules.items():
+        if prefix != "default" and product.code.startswith(prefix):
+            return margin
     return rules["default"]
 
 

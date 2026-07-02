@@ -42,16 +42,12 @@ class Product(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     code: Mapped[str] = mapped_column(String(128), index=True)
-    parent_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), nullable=True)
     supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"), nullable=True)
     ean: Mapped[str | None] = mapped_column(String(64), nullable=True)
     manufacturer: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     title: Mapped[str | None] = mapped_column(Text, nullable=True)
-    short_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     long_description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    seo_title: Mapped[str | None] = mapped_column(Text, nullable=True)
-    seo_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     url_slug: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     stock: Mapped[int | None] = mapped_column(Integer, nullable=True)

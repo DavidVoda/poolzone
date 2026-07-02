@@ -46,7 +46,8 @@ def test_render_products_shape_and_price(db_session):
     from app.pricing import load_margin_rules
 
     _seed(db_session)
-    xml = render_products(db_session, load_margin_rules(db_session))
+    xml, count = render_products(db_session, load_margin_rules(db_session))
+    assert count == 1
     root = ET.fromstring(xml)
     assert root.tag == "PRODUCTS"
     prod = root.find("PRODUCT")
@@ -71,7 +72,8 @@ def test_render_skips_inactive_products(db_session):
     from app.pricing import load_margin_rules
 
     _seed(db_session, active=False)
-    xml = render_products(db_session, load_margin_rules(db_session))
+    xml, count = render_products(db_session, load_margin_rules(db_session))
+    assert count == 0
     assert ET.fromstring(xml).find("PRODUCT") is None
 
 

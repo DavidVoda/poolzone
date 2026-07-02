@@ -3,12 +3,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db import Base
-from app.settings import settings
+from app.settings import DATABASE_URL
 
 
 @pytest.fixture(scope="session")
 def engine():
-    eng = create_engine(settings.database_url, future=True)
+    eng = create_engine(DATABASE_URL, future=True)
     Base.metadata.create_all(eng)
     yield eng
     eng.dispose()

@@ -37,16 +37,6 @@ def _apply_update(product: Product, parsed: ParsedProduct, whitelist: list[str])
 
 def run_sync(session: Session, supplier: Supplier, parsed_products: list[ParsedProduct]) -> dict:
     """Create-full for new products, update-whitelist for existing. Records a JobRun."""
-    # Overlap guard: refuse to run if another sync is already in progress.
-    in_progress = session.execute(
-        select(JobRun).where(JobRun.kind == "sync", JobRun.status == "running")
-    ).first()
-    if in_progress:
-        job = JobRun(kind="sync", status="skipped", stats={"reason": "another sync running"})
-        session.add(job)
-        session.flush()
-        return {"skipped": True}
-
     job = JobRun(kind="sync", status="running", stats={})
     session.add(job)
     session.flush()
