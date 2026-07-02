@@ -54,10 +54,10 @@ def test_render_products_shape_and_price(db_session):
     assert prod.findtext("CODE") == "ESPA1"
     assert prod.find("DESCRIPTIONS/DESCRIPTION").get("language") == "cs"
     assert prod.findtext("DESCRIPTIONS/DESCRIPTION/TITLE") == "Těsnění"
-    # 77 / 0.65 = 118.46
-    assert prod.findtext("PRICES/PRICE/PRICE_COMMON") == "118.46"
-    assert prod.findtext("PRICES/PRICE/PRICE_PURCHASE") == "77.00"
-    assert prod.findtext("PRICES/PRICE/PRICELISTS/PRICELIST/PRICE_ORIGINAL") == "118.46"
+    # Raw float formatting to match the legacy feed: 77 / 0.65 = 118.46153846153845
+    assert prod.findtext("PRICES/PRICE/PRICE_COMMON") == "118.46153846153845"
+    assert prod.findtext("PRICES/PRICE/PRICE_PURCHASE") == "77.0"
+    assert prod.findtext("PRICES/PRICE/PRICELISTS/PRICELIST/PRICE_ORIGINAL") == "118.46153846153845"
     # EAN element empty, EAN value carried in SUPPLIER_CODE (old convention)
     assert prod.findtext("EAN") in (None, "")
     assert prod.findtext("SUPPLIER_CODE") == "8594"

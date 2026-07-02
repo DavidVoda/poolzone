@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import Category, JobRun, Product, ProductCategory
-from app.pricing import load_margin_rules, sale_price
+from app.pricing import load_margin_rules, resolve_margin
 
 PRODUCTS_FILE = "poolzone_products.xml"
 
@@ -72,11 +72,14 @@ def render_products(session: Session, rules: dict) -> tuple[bytes, int]:
         if p.price_purchase is not None:
             prices = ET.SubElement(prod, "PRICES")
             price = ET.SubElement(prices, "PRICE", {"language": "cs"})
-            _sub(price, "PRICE_PURCHASE", f"{p.price_purchase:.2f}")
-            common = sale_price(p, rules)
-            _sub(price, "PRICE_COMMON", f"{common:.2f}")
+            # Reproduce the legacy script's float math + str() formatting exactly.
+            purchase = float(p.price_purchase)
+            margin = float(resolve_margin(p, rules))
+            common = str(purchase * (1 / (1 - margin)) * float(p.coefficient))
+            _sub(price, "PRICE_PURCHASE", str(purchase))
+            _sub(price, "PRICE_COMMON", common)
             pricelist = ET.SubElement(ET.SubElement(price, "PRICELISTS"), "PRICELIST")
-            _sub(pricelist, "PRICE_ORIGINAL", f"{common:.2f}")
+            _sub(pricelist, "PRICE_ORIGINAL", common)
 
         cats = cat_map.get(p.id, [])
         if cats:

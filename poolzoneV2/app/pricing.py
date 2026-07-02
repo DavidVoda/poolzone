@@ -30,8 +30,16 @@ def resolve_margin(product: Product, rules: dict[str, Decimal]) -> Decimal:
     return rules["default"]
 
 
-def sale_price(product: Product, rules: dict[str, Decimal]) -> Decimal:
-    """Sale price excl VAT = purchase * 1/(1-margin) * coefficient, rounded to cents."""
+def raw_sale_price(product: Product, rules: dict[str, Decimal]) -> Decimal:
+    """Unrounded sale price excl VAT = purchase * 1/(1-margin) * coefficient.
+
+    The exporter needs the unrounded value to byte-match the legacy XML feed
+    (which wrote full float precision). Use sale_price() for money display.
+    """
     margin = resolve_margin(product, rules)
-    raw = product.price_purchase * (_ONE / (_ONE - margin)) * product.coefficient
-    return raw.quantize(_CENT, rounding=ROUND_HALF_UP)
+    return product.price_purchase * (_ONE / (_ONE - margin)) * product.coefficient
+
+
+def sale_price(product: Product, rules: dict[str, Decimal]) -> Decimal:
+    """Sale price excl VAT, rounded to cents (for display / API)."""
+    return raw_sale_price(product, rules).quantize(_CENT, rounding=ROUND_HALF_UP)
