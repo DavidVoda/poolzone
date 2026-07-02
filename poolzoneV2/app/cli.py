@@ -3,6 +3,7 @@ from __future__ import annotations
 import typer
 
 from app.db import session_scope
+from app.export.upgates_xml import run_export
 from app.models import Supplier
 from app.sync.pipeline import run_sync
 from app.sync.suppliers import pooltechnika
@@ -30,6 +31,14 @@ def sync(supplier_code: str) -> None:
         parsed = adapter.parse(raw)
         stats = run_sync(session, supplier, parsed)
     typer.echo(f"Sync done: {stats}")
+
+
+@app.command()
+def export(out_dir: str = "feeds") -> None:
+    """Render active products to Upgates XML in OUT_DIR (default: ./feeds)."""
+    with session_scope() as session:
+        stats = run_export(session, out_dir)
+    typer.echo(f"Export done: {stats}")
 
 
 if __name__ == "__main__":
