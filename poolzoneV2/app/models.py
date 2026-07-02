@@ -114,9 +114,7 @@ class Category(Base):
 
 class ProductCategory(Base):
     __tablename__ = "product_categories"
-    __table_args__ = (
-        UniqueConstraint("product_id", "category_id", name="uq_product_category"),
-    )
+    __table_args__ = (UniqueConstraint("product_id", "category_id", name="uq_product_category"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"))
@@ -127,9 +125,7 @@ class ProductCategory(Base):
 
 class SupplierCategoryMap(Base):
     __tablename__ = "supplier_category_map"
-    __table_args__ = (
-        UniqueConstraint("supplier_id", "supplier_path", name="uq_supplier_path"),
-    )
+    __table_args__ = (UniqueConstraint("supplier_id", "supplier_path", name="uq_supplier_path"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id", ondelete="CASCADE"))
@@ -151,10 +147,10 @@ class JobRun(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     kind: Mapped[str] = mapped_column(String(32), index=True)  # "sync" | "export" | ...
-    started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    status: Mapped[str] = mapped_column(String(32), default="running")  # running|success|failed|skipped
+    status: Mapped[str] = mapped_column(
+        String(32), default="running"
+    )  # running|success|failed|skipped
     stats: Mapped[dict] = mapped_column(JSONB, default=dict)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
