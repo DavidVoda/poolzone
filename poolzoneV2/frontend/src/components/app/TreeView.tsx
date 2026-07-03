@@ -28,8 +28,10 @@ export function TreeView({
       return next
     })
 
-  const render = (parentId: number | null, depth: number): React.ReactNode =>
-    (byParent.get(parentId) ?? []).map((n) => {
+  const render = (parentId: number | null, depth: number, seen: Set<number>): React.ReactNode =>
+    (byParent.get(parentId) ?? [])
+      .filter((n) => !seen.has(n.id)) // defensive: bad data with a cycle won't recurse forever
+      .map((n) => {
       const children = byParent.get(n.id) ?? []
       const isCollapsed = collapsed.has(n.id)
       return (
@@ -56,10 +58,10 @@ export function TreeView({
             )}
             {n.name}
           </div>
-          {!isCollapsed && render(n.id, depth + 1)}
+          {!isCollapsed && render(n.id, depth + 1, new Set(seen).add(n.id))}
         </div>
       )
     })
 
-  return <div>{render(null, 0)}</div>
+  return <div>{render(null, 0, new Set())}</div>
 }

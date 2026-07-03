@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 
 from fastapi import HTTPException
-from sqlalchemy import Boolean, Integer, Numeric
+from sqlalchemy import Boolean, Integer, Numeric, String
 from sqlalchemy.sql import ColumnElement
 
 from app.models import Product
@@ -51,12 +51,15 @@ def parse_filter(expr: str) -> ColumnElement[bool]:
         case "eq":
             return col == _coerce(col, value)
         case "ne":
-            return col != _coerce(col, value)
+            # SQL: NULL != x is UNKNOWN, so "not x" must also keep NULL rows.
+            return (col != _coerce(col, value)) | col.is_(None)
         case "gt":
             return col > _coerce(col, value)
         case "lt":
             return col < _coerce(col, value)
         case "contains":
+            if not isinstance(col.type, String):
+                raise HTTPException(422, f"'contains' needs a text column, not '{col_name}'")
             return col.ilike(f"%{value}%")
         case "empty":
             return col.is_(None)

@@ -12,19 +12,36 @@ export function rulesFromApi(rules: { scope: string; match_value: string | null;
 }
 
 export function resolveMargin(p: { code: string; margin_pct: string | null }, rules: MarginRules): MarginSource {
-  if (p.margin_pct != null) return { margin: Number(p.margin_pct), source: "override" }
+  if (p.margin_pct != null && p.margin_pct !== "") return { margin: Number(p.margin_pct), source: "override" }
+  // Longest matching prefix wins — deterministic regardless of JS object key ordering
+  // (numeric-looking keys would otherwise be reordered ahead of insertion order).
+  let best: { margin: number; prefix: string } | null = null
   for (const [prefix, margin] of Object.entries(rules)) {
-    if (prefix !== "default" && p.code.startsWith(prefix)) return { margin, source: "prefix", prefix }
+    if (prefix !== "default" && p.code.startsWith(prefix) && (!best || prefix.length > best.prefix.length)) {
+      best = { margin, prefix }
+    }
   }
+  if (best) return { margin: best.margin, source: "prefix", prefix: best.prefix }
   return { margin: rules.default, source: "default" }
+}
+
+/** Parse a decimal string; blank/invalid -> null (avoids Number("")===0 showing a fake 0). */
+const num = (v: string | null): number | null => {
+  if (v == null || v.trim() === "") return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
 }
 
 export function salePrice(
   p: { code: string; price_purchase: string | null; coefficient: string; margin_pct: string | null },
   rules: MarginRules,
 ): number | null {
-  if (p.price_purchase == null) return null
+  const purchase = num(p.price_purchase)
+  const coef = num(p.coefficient)
+  if (purchase == null || coef == null) return null
   const { margin } = resolveMargin(p, rules)
-  const raw = (Number(p.price_purchase) / (1 - margin)) * Number(p.coefficient)
-  return Math.round(raw * 100) / 100 // half-up on positive prices, matches ROUND_HALF_UP
+  const raw = (purchase / (1 - margin)) * coef
+  // +epsilon nudge counters binary float representation so half-cents round up like
+  // the backend's Decimal ROUND_HALF_UP (preview only; backend is authoritative on save).
+  return Math.round((raw + 1e-9) * 100) / 100
 }

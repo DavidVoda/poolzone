@@ -44,16 +44,17 @@ export default function Products() {
   })
 
   const bulkActive = useMutation({
-    mutationFn: async (active: boolean) => {
-      for (const id of Object.keys(selection)) {
-        await unwrap(
-          client.PATCH("/api/products/{product_id}", {
-            params: { path: { product_id: Number(id) } },
-            body: { active },
-          }),
-        )
-      }
-    },
+    mutationFn: (active: boolean) =>
+      Promise.all(
+        Object.keys(selection).map((id) =>
+          unwrap(
+            client.PATCH("/api/products/{product_id}", {
+              params: { path: { product_id: Number(id) } },
+              body: { active },
+            }),
+          ),
+        ),
+      ),
     onSuccess: (_, active) => {
       toast.success(active ? "Produkty aktivovány" : "Produkty deaktivovány")
       setSelection({})

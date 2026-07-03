@@ -53,7 +53,16 @@ def update_category(category_id: int, patch: CategoryUpdate, db: Session = Depen
     category = db.get(Category, category_id)
     if category is None:
         raise HTTPException(404, "category not found")
-    for field, value in patch.model_dump(exclude_unset=True).items():
+    data = patch.model_dump(exclude_unset=True)
+    if "parent_id" in data and data["parent_id"] is not None:
+        # Reject a parent that is the category itself or one of its descendants
+        # (would make the tree cyclic and hang the recursive UI renderers).
+        ancestor = db.get(Category, data["parent_id"])
+        while ancestor is not None:
+            if ancestor.id == category_id:
+                raise HTTPException(409, "parent would create a cycle")
+            ancestor = db.get(Category, ancestor.parent_id) if ancestor.parent_id else None
+    for field, value in data.items():
         setattr(category, field, value)
     db.flush()
     return category

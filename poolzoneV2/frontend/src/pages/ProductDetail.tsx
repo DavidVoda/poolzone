@@ -66,9 +66,12 @@ export default function ProductDetail() {
   })
 
   const [form, setForm] = useState<FormState | null>(null)
+  // Seed the form once per product id. Keying on product identity would let a
+  // background refetch (window focus) silently overwrite unsaved edits.
   useEffect(() => {
     if (product) setForm(toForm(product))
-  }, [product])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id])
 
   const dirty = useMemo(
     () => !!product && !!form && JSON.stringify(form) !== JSON.stringify(toForm(product)),
@@ -319,8 +322,10 @@ function CategoryChecklist({
     byParent.set(c.parent_id, list)
   })
 
-  const render = (parentId: number | null, depth: number): React.ReactNode =>
-    (byParent.get(parentId) ?? []).map((c) => {
+  const render = (parentId: number | null, depth: number, seen: Set<number>): React.ReactNode =>
+    (byParent.get(parentId) ?? [])
+      .filter((c) => !seen.has(c.id)) // defensive against cyclic category data
+      .map((c) => {
       const entry = value.find((v) => v.category_id === c.id)
       return (
         <div key={c.id}>
@@ -350,10 +355,10 @@ function CategoryChecklist({
               </label>
             )}
           </div>
-          {render(c.id, depth + 1)}
+          {render(c.id, depth + 1, new Set(seen).add(c.id))}
         </div>
       )
     })
 
-  return <div>{render(null, 0)}</div>
+  return <div>{render(null, 0, new Set())}</div>
 }

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { EditorContent, useEditor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import { Bold, Code, Italic, List, ListOrdered, Redo, Undo } from "lucide-react"
@@ -15,6 +15,15 @@ export function RichTextEditor({ value, onChange }: Props) {
     content: value,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
   })
+
+  // Resync when value changes externally (Discard, Re-pull) — editor seeds content
+  // only at mount otherwise. Guard against the echo from our own onUpdate.
+  useEffect(() => {
+    if (editor && !raw && value !== editor.getHTML()) {
+      editor.commands.setContent(value, { emitUpdate: false })
+    }
+  }, [value, editor, raw])
+
   if (!editor) return null
 
   const Btn = ({ active, onClick, children }: { active?: boolean; onClick: () => void; children: React.ReactNode }) => (

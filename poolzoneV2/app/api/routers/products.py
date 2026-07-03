@@ -58,7 +58,7 @@ def list_products(
 def _detail(product: Product, db: Session, rules: dict) -> ProductDetailOut:
     out = ProductDetailOut.model_validate(product)
     if product.price_purchase is not None:
-        out.sale_price = sale_price(product, rules)
+        out.sale_price = sale_price(product, rules)  # same rule as _out; kept inline (different return type)
     out.categories = [
         ProductCategoryIO.model_validate(pc)
         for pc in db.execute(
@@ -95,7 +95,9 @@ def update_product(product_id: int, patch: ProductUpdate, db: Session = Depends(
         product.images = [ProductImage(**i) for i in images]
     if categories is not None:
         db.execute(delete(ProductCategory).where(ProductCategory.product_id == product.id))
-        for pos, c in enumerate(categories):
+        seen: set[int] = set()  # last wins; avoids the (product_id, category_id) unique-constraint 500
+        deduped = [c for c in categories if not (c["category_id"] in seen or seen.add(c["category_id"]))]
+        for pos, c in enumerate(deduped):
             db.add(ProductCategory(product_id=product.id, position=pos, **c))
     db.flush()
     db.refresh(product)  # reflect DB-quantized numerics in the response
@@ -113,6 +115,8 @@ def repull_product(product_id: int, db: Session = Depends(get_db)):
     adapter = ADAPTERS.get(supplier.code)
     if adapter is None:
         raise HTTPException(409, f"no adapter for supplier '{supplier.code}'")
+    if not supplier.feed_url:
+        raise HTTPException(409, f"supplier '{supplier.code}' has no feed_url")
     parsed = next(
         (p for p in adapter.parse(adapter.fetch(supplier.feed_url)) if p.code == product.code),
         None,

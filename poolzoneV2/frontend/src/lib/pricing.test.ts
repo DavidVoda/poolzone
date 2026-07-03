@@ -23,4 +23,15 @@ describe("pricing mirror of app/pricing.py", () => {
   it("null purchase -> null", () => {
     expect(salePrice({ code: "X1", price_purchase: null, coefficient: "1", margin_pct: null }, RULES)).toBeNull()
   })
+  it("empty coefficient/purchase -> null (not a fake 0)", () => {
+    expect(salePrice({ code: "X1", price_purchase: "100", coefficient: "", margin_pct: "0.35" }, RULES)).toBeNull()
+    expect(salePrice({ code: "X1", price_purchase: "", coefficient: "1", margin_pct: null }, RULES)).toBeNull()
+  })
+  it("empty margin string is treated as no override", () => {
+    expect(resolveMargin({ code: "ESPA1", margin_pct: "" }, RULES)).toEqual({ margin: 0.35, source: "default" })
+  })
+  it("longest prefix wins, order-independent", () => {
+    const r = { default: 0.35, AK: 0.34, AKX: 0.3 }
+    expect(resolveMargin({ code: "AKX1", margin_pct: null }, r)).toEqual({ margin: 0.3, source: "prefix", prefix: "AKX" })
+  })
 })

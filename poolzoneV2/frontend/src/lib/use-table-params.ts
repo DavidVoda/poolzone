@@ -37,7 +37,11 @@ export function useTableParams() {
         v ? p.set("q", v) : p.delete("q")
         p.delete("page")
       }),
-    setSort: (v: string | null) => update((p) => (v ? p.set("sort", v) : p.delete("sort"))),
+    setSort: (v: string | null) =>
+      update((p) => {
+        v ? p.set("sort", v) : p.delete("sort")
+        p.delete("page") // reordering invalidates the current offset
+      }),
     setPage: (n: number) => update((p) => (n > 0 ? p.set("page", String(n)) : p.delete("page"))),
     setPeek: (id: string | null) => update((p) => (id ? p.set("peek", id) : p.delete("peek"))),
   }

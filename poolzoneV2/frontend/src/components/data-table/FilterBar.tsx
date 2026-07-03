@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Plus, Search, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,10 +45,11 @@ export function FilterBar({ columns, filters, onChange, q, onQChange, children }
   const [draft, setDraft] = useState<Partial<Filter>>({})
   const draftCol = columns.find((c) => c.id === draft.col)
   const qTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(qTimer.current), [])
 
   const commit = () => {
     if (!draft.col || !draft.op) return
-    if (NEEDS_VALUE(draft.op) && !draft.value && draftCol?.type !== "bool") return
+    if (NEEDS_VALUE(draft.op) && !draft.value) return // bool must pick ano/ne too
     onChange([...filters, { col: draft.col, op: draft.op, value: draft.value ?? "" } as Filter])
     setDraft({})
     setOpen(false)

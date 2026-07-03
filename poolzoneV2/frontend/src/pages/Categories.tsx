@@ -136,8 +136,19 @@ function CategoryForm({
     onError: (e: Error) => toast.error(e.message),
   })
 
-  // a category can't be its own parent
-  const parentOptions = categories.filter((c) => c.id !== category.id)
+  // A category can't be its own parent or a descendant's (would create a cycle).
+  const descendants = new Set<number>([category.id])
+  let grew = true
+  while (grew) {
+    grew = false
+    for (const c of categories) {
+      if (c.parent_id != null && descendants.has(c.parent_id) && !descendants.has(c.id)) {
+        descendants.add(c.id)
+        grew = true
+      }
+    }
+  }
+  const parentOptions = categories.filter((c) => !descendants.has(c.id))
 
   return (
     <FormSection

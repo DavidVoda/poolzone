@@ -69,10 +69,10 @@ class Product(Base):
     )
 
     params: Mapped[list[ProductParam]] = relationship(
-        cascade="all, delete-orphan", back_populates="product"
+        cascade="all, delete-orphan", back_populates="product", order_by="ProductParam.ord"
     )
     images: Mapped[list[ProductImage]] = relationship(
-        cascade="all, delete-orphan", back_populates="product"
+        cascade="all, delete-orphan", back_populates="product", order_by="ProductImage.ord"
     )
 
 

@@ -236,3 +236,43 @@ def test_repull_returns_feed_values(client, seeded, monkeypatch):
 def test_repull_product_not_in_feed_404(client, seeded, monkeypatch):
     monkeypatch.setattr(suppliers.pooltechnika, "fetch", lambda url: b"<SHOP></SHOP>")
     assert client.post(f"/api/products/{seeded.id}/repull").status_code == 404
+
+
+def test_ne_filter_keeps_null_rows(client, seeded, db_session):
+    db_session.add(Product(code="NOMAN", title="x", manufacturer=None))
+    db_session.add(Product(code="BOSCH1", title="y", manufacturer="Bosch"))
+    db_session.flush()
+    # "not Bosch" must include the NULL-manufacturer row
+    codes = {p["code"] for p in client.get("/api/products?filter=manufacturer:ne:Bosch").json()["items"]}
+    assert "NOMAN" in codes and "BOSCH1" not in codes
+
+
+def test_contains_on_numeric_column_422(client, seeded):
+    assert client.get("/api/products?filter=stock:contains:5").status_code == 422
+
+
+def test_update_product_dedups_categories(client, seeded, db_session):
+    cat = Category(name="C")
+    db_session.add(cat)
+    db_session.flush()
+    r = client.patch(
+        f"/api/products/{seeded.id}",
+        json={"categories": [{"category_id": cat.id, "primary_yn": True}, {"category_id": cat.id, "primary_yn": False}]},
+    )
+    assert r.status_code == 200
+    assert r.json()["categories"] == [{"category_id": cat.id, "primary_yn": True}]
+
+
+def test_repull_no_feed_url_409(client, seeded, db_session):
+    db_session.execute(
+        Supplier.__table__.update().where(Supplier.id == seeded.supplier_id).values(feed_url=None)
+    )
+    db_session.flush()
+    assert client.post(f"/api/products/{seeded.id}/repull").status_code == 409
+
+
+def test_category_cycle_rejected(client, seeded):
+    root = client.post("/api/categories", json={"name": "R", "parent_id": None}).json()
+    child = client.post("/api/categories", json={"name": "C", "parent_id": root["id"]}).json()
+    # making root a child of its own child -> cycle -> 409
+    assert client.patch(f"/api/categories/{root['id']}", json={"parent_id": child["id"]}).status_code == 409
