@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.api.schemas import ProductOut, ProductUpdate
+from app.api.filters import parse_filter, parse_sort
+from app.api.schemas import ProductListOut, ProductOut, ProductUpdate
 from app.models import Product
 from app.pricing import load_margin_rules, sale_price
 
@@ -19,22 +20,30 @@ def _out(product: Product, rules: dict) -> ProductOut:
     return out
 
 
-@router.get("", response_model=list[ProductOut])
+@router.get("", response_model=ProductListOut)
 def list_products(
     db: Session = Depends(get_db),
     q: str | None = None,
-    active: bool | None = None,
+    filter: list[str] = Query(default=[]),
+    sort: str | None = None,
+    overrides: bool = False,
     limit: int = Query(50, le=500),
     offset: int = 0,
 ):
     stmt = select(Product)
     if q:
-        stmt = stmt.where(Product.title.ilike(f"%{q}%") | Product.code.ilike(f"%{q}%"))
-    if active is not None:
-        stmt = stmt.where(Product.active.is_(active))
-    stmt = stmt.order_by(Product.id).limit(limit).offset(offset)
+        like = f"%{q}%"
+        stmt = stmt.where(
+            Product.title.ilike(like) | Product.code.ilike(like) | Product.ean.ilike(like)
+        )
+    for expr in filter:
+        stmt = stmt.where(parse_filter(expr))
+    if overrides:
+        stmt = stmt.where((Product.coefficient != 1) | (Product.margin_pct.is_not(None)))
+    total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
+    stmt = stmt.order_by(*parse_sort(sort)).limit(limit).offset(offset)
     rules = load_margin_rules(db)
-    return [_out(p, rules) for p in db.execute(stmt).scalars()]
+    return ProductListOut(items=[_out(p, rules) for p in db.execute(stmt).scalars()], total=total)
 
 
 @router.get("/{product_id}", response_model=ProductOut)

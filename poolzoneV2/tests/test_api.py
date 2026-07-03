@@ -41,15 +41,57 @@ def test_health(client):
 
 
 def test_list_products_computes_sale_price(client, seeded):
-    rows = client.get("/api/products").json()
-    assert len(rows) == 1
+    body = client.get("/api/products").json()
+    rows = body["items"]
+    assert body["total"] == 1
     assert rows[0]["code"] == "ESPA1"
     assert rows[0]["sale_price"] == "118.46"  # 77 / 0.65
 
 
 def test_search_products(client, seeded):
-    assert len(client.get("/api/products?q=ESPA").json()) == 1
-    assert len(client.get("/api/products?q=nope").json()) == 0
+    assert client.get("/api/products?q=ESPA").json()["total"] == 1
+    assert client.get("/api/products?q=nope").json()["total"] == 0
+
+
+def test_list_products_envelope_and_filters(client, seeded, db_session):
+    db_session.add(
+        Product(code="AK1", title="Sonda", price_purchase=Decimal("100"), stock=0, active=False)
+    )
+    db_session.flush()
+
+    body = client.get("/api/products").json()
+    assert body["total"] == 2 and len(body["items"]) == 2
+
+    body = client.get("/api/products?filter=active:eq:true").json()
+    assert body["total"] == 1 and body["items"][0]["code"] == "ESPA1"
+
+    body = client.get("/api/products?filter=stock:gt:0").json()
+    assert body["total"] == 0  # ESPA1 has stock None, AK1 has 0
+
+    body = client.get("/api/products?filter=title:contains:sond").json()
+    assert body["total"] == 1 and body["items"][0]["code"] == "AK1"
+
+    body = client.get("/api/products?filter=margin_pct:empty:").json()
+    assert body["total"] == 1 and body["items"][0]["code"] == "AK1"
+
+    assert client.get("/api/products?filter=nope:eq:1").status_code == 422
+    assert client.get("/api/products?filter=stock:gt:abc").status_code == 422
+
+
+def test_list_products_sort(client, seeded, db_session):
+    db_session.add(Product(code="AK1", title="Sonda"))
+    db_session.flush()
+    body = client.get("/api/products?sort=-code").json()
+    assert [p["code"] for p in body["items"]] == ["ESPA1", "AK1"]
+    assert client.get("/api/products?sort=nope").status_code == 422
+
+
+def test_list_products_overrides_flag(client, seeded, db_session):
+    # seeded has explicit margin -> is an override; add a plain product
+    db_session.add(Product(code="PLAIN1", title="x"))
+    db_session.flush()
+    body = client.get("/api/products?overrides=true").json()
+    assert [p["code"] for p in body["items"]] == ["ESPA1"]
 
 
 def test_update_product_owner_fields(client, seeded):
@@ -86,7 +128,7 @@ def test_trigger_sync_uses_adapter(client, seeded, monkeypatch):
     monkeypatch.setattr(suppliers.pooltechnika, "fetch", lambda url: sample)
     stats = client.post("/api/jobs/sync/pooltechnika").json()
     assert stats["created"] == 1
-    assert len(client.get("/api/products?q=NEW1").json()) == 1
+    assert client.get("/api/products?q=NEW1").json()["total"] == 1
 
 
 def test_trigger_sync_unknown_supplier_404(client, seeded):

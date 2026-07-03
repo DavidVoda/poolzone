@@ -45,6 +45,11 @@ class ProductUpdate(BaseModel):
     note: str | None = None
 
 
+class ProductListOut(BaseModel):
+    items: list[ProductOut]
+    total: int
+
+
 class MarginRuleOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
