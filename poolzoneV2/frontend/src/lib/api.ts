@@ -22,3 +22,4 @@ export type CategoryMapping = paths["/api/categories/mappings"]["get"]["response
 export type Supplier = paths["/api/suppliers"]["get"]["responses"]["200"]["content"]["application/json"][number]
 export type MarginRule = paths["/api/pricing/rules"]["get"]["responses"]["200"]["content"]["application/json"][number]
 export type JobRun = paths["/api/jobs"]["get"]["responses"]["200"]["content"]["application/json"][number]
+export type FeedConfig = paths["/api/feeds"]["get"]["responses"]["200"]["content"]["application/json"][number]

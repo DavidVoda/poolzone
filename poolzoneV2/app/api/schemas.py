@@ -150,3 +150,19 @@ class JobRunOut(BaseModel):
     finished_at: datetime | None
     stats: dict
     error: str | None
+
+
+class FeedConfigOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    kind: str
+    feed_url: str | None
+    update_whitelist: list[str]
+    last_run_at: datetime | None
+    available_fields: list[str] = []  # every whitelist-able field for this kind (GUI)
+
+
+class FeedConfigUpdate(BaseModel):
+    feed_url: str | None = None
+    update_whitelist: list[str] | None = None

@@ -141,6 +141,19 @@ class PricingRule(Base):
     margin_pct: Mapped[Decimal] = mapped_column(Numeric(5, 4))
 
 
+class FeedConfig(Base):
+    """A GUI-configurable import feed (poolzone Upgates export). One row per kind."""
+
+    __tablename__ = "feed_configs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(32), unique=True, index=True)  # products|categories
+    feed_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Fields the import may overwrite on an EXISTING row. Empty = update nothing.
+    update_whitelist: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class JobRun(Base):
     __tablename__ = "job_runs"
 
