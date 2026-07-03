@@ -5,7 +5,16 @@ from fastapi.testclient import TestClient
 
 from app.api.deps import get_db
 from app.api.main import app
-from app.models import PricingRule, Product, Supplier
+from app.models import (
+    Category,
+    PricingRule,
+    Product,
+    ProductCategory,
+    ProductImage,
+    ProductParam,
+    Supplier,
+    SupplierCategoryMap,
+)
 from app.sync import suppliers
 
 
@@ -145,3 +154,35 @@ def test_update_product_content_fields(client, seeded):
     assert body["short_description"] == "krátký"
     assert body["seo_title"] == "SEO"
     assert body["seo_description"] == "popis"
+
+
+def test_product_detail_children_roundtrip(client, seeded, db_session):
+    cat = Category(name="Čerpadla")
+    db_session.add(cat)
+    db_session.flush()
+    seeded.params = [ProductParam(name="Výkon", value="8 m3/h", ord=0)]
+    seeded.images = [ProductImage(url="http://img/1.jpg", alt=None, ord=0)]
+    db_session.add(ProductCategory(product_id=seeded.id, category_id=cat.id, primary_yn=True))
+    db_session.flush()
+
+    body = client.get(f"/api/products/{seeded.id}").json()
+    assert body["params"] == [{"name": "Výkon", "value": "8 m3/h", "ord": 0}]
+    assert body["images"] == [{"url": "http://img/1.jpg", "alt": None, "ord": 0}]
+    assert body["categories"] == [{"category_id": cat.id, "primary_yn": True}]
+
+    r = client.patch(
+        f"/api/products/{seeded.id}",
+        json={
+            "params": [
+                {"name": "Výkon", "value": "11 m3/h", "ord": 0},
+                {"name": "Napětí", "value": "230 V", "ord": 1},
+            ],
+            "images": [],
+            "categories": [{"category_id": cat.id, "primary_yn": False}],
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert [p["value"] for p in body["params"]] == ["11 m3/h", "230 V"]
+    assert body["images"] == []
+    assert body["categories"] == [{"category_id": cat.id, "primary_yn": False}]

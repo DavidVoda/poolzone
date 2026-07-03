@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.api.filters import parse_filter, parse_sort
-from app.api.schemas import ProductListOut, ProductOut, ProductUpdate
-from app.models import Product
+from app.api.schemas import (
+    ProductCategoryIO,
+    ProductDetailOut,
+    ProductListOut,
+    ProductOut,
+    ProductUpdate,
+)
+from app.models import Product, ProductCategory, ProductImage, ProductParam
 from app.pricing import load_margin_rules, sale_price
 
 router = APIRouter(prefix="/api/products", tags=["products"])
@@ -46,21 +52,48 @@ def list_products(
     return ProductListOut(items=[_out(p, rules) for p in db.execute(stmt).scalars()], total=total)
 
 
-@router.get("/{product_id}", response_model=ProductOut)
+def _detail(product: Product, db: Session, rules: dict) -> ProductDetailOut:
+    out = ProductDetailOut.model_validate(product)
+    if product.price_purchase is not None:
+        out.sale_price = sale_price(product, rules)
+    out.categories = [
+        ProductCategoryIO.model_validate(pc)
+        for pc in db.execute(
+            select(ProductCategory)
+            .where(ProductCategory.product_id == product.id)
+            .order_by(ProductCategory.position, ProductCategory.id)
+        ).scalars()
+    ]
+    return out
+
+
+@router.get("/{product_id}", response_model=ProductDetailOut)
 def get_product(product_id: int, db: Session = Depends(get_db)):
     product = db.get(Product, product_id)
     if product is None:
         raise HTTPException(404, "product not found")
-    return _out(product, load_margin_rules(db))
+    return _detail(product, db, load_margin_rules(db))
 
 
-@router.patch("/{product_id}", response_model=ProductOut)
+@router.patch("/{product_id}", response_model=ProductDetailOut)
 def update_product(product_id: int, patch: ProductUpdate, db: Session = Depends(get_db)):
     product = db.get(Product, product_id)
     if product is None:
         raise HTTPException(404, "product not found")
-    for field, value in patch.model_dump(exclude_unset=True).items():
+    data = patch.model_dump(exclude_unset=True)
+    params = data.pop("params", None)
+    images = data.pop("images", None)
+    categories = data.pop("categories", None)
+    for field, value in data.items():
         setattr(product, field, value)
+    if params is not None:
+        product.params = [ProductParam(**p) for p in params]
+    if images is not None:
+        product.images = [ProductImage(**i) for i in images]
+    if categories is not None:
+        db.execute(delete(ProductCategory).where(ProductCategory.product_id == product.id))
+        for pos, c in enumerate(categories):
+            db.add(ProductCategory(product_id=product.id, position=pos, **c))
     db.flush()
     db.refresh(product)  # reflect DB-quantized numerics in the response
-    return _out(product, load_margin_rules(db))
+    return _detail(product, db, load_margin_rules(db))

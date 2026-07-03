@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
@@ -43,6 +44,38 @@ class ProductUpdate(BaseModel):
     coefficient: Decimal | None = None
     margin_pct: Decimal | None = None
     note: str | None = None
+    params: list[ProductParamIO] | None = None
+    images: list[ProductImageIO] | None = None
+    categories: list[ProductCategoryIO] | None = None
+
+
+class ProductParamIO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    value: str | None
+    ord: int
+
+
+class ProductImageIO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    url: str
+    alt: str | None
+    ord: int
+
+
+class ProductCategoryIO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    category_id: int
+    primary_yn: bool
+
+
+class ProductDetailOut(ProductOut):
+    params: list[ProductParamIO] = []
+    images: list[ProductImageIO] = []
+    categories: list[ProductCategoryIO] = []
 
 
 class ProductListOut(BaseModel):
@@ -69,5 +102,7 @@ class JobRunOut(BaseModel):
     id: int
     kind: str
     status: str
+    started_at: datetime | None
+    finished_at: datetime | None
     stats: dict
     error: str | None
