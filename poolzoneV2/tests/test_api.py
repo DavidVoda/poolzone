@@ -220,3 +220,19 @@ def test_categories_crud_and_mappings(client, seeded, db_session):
 
     # child now unreferenced -> delete OK
     assert client.delete(f"/api/categories/{child['id']}").status_code == 200
+
+
+def test_repull_returns_feed_values(client, seeded, monkeypatch):
+    sample = (
+        b"<SHOP><SHOPITEM><ITEM_ID>ESPA1</ITEM_ID><PRODUCTNAME>Novy nazev</PRODUCTNAME>"
+        b"<PRICE_VAT>121,00</PRICE_VAT></SHOPITEM></SHOP>"
+    )
+    monkeypatch.setattr(suppliers.pooltechnika, "fetch", lambda url: sample)
+    body = client.post(f"/api/products/{seeded.id}/repull").json()
+    assert body["title"] == "Novy nazev"
+    assert "price_purchase" in body and "params" in body and "image_urls" in body
+
+
+def test_repull_product_not_in_feed_404(client, seeded, monkeypatch):
+    monkeypatch.setattr(suppliers.pooltechnika, "fetch", lambda url: b"<SHOP></SHOP>")
+    assert client.post(f"/api/products/{seeded.id}/repull").status_code == 404

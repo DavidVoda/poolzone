@@ -9,12 +9,9 @@ from app.api.schemas import JobRunOut
 from app.export.upgates_xml import run_export
 from app.models import JobRun, Supplier
 from app.sync.pipeline import run_sync
-from app.sync.suppliers import pooltechnika
+from app.sync.suppliers import ADAPTERS
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
-
-# Supplier code -> adapter module (fetch + parse). Mirrors the CLI registry.
-ADAPTERS = {pooltechnika.CODE: pooltechnika}
 
 # ponytail: triggers run synchronously — a manual admin click that waits is fine
 # at this scale. Move to FastAPI BackgroundTasks when the sync wait annoys.

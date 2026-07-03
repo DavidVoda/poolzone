@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import dataclasses
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
@@ -13,8 +15,9 @@ from app.api.schemas import (
     ProductOut,
     ProductUpdate,
 )
-from app.models import Product, ProductCategory, ProductImage, ProductParam
+from app.models import Product, ProductCategory, ProductImage, ProductParam, Supplier
 from app.pricing import load_margin_rules, sale_price
+from app.sync.suppliers import ADAPTERS
 
 router = APIRouter(prefix="/api/products", tags=["products"])
 
@@ -97,3 +100,23 @@ def update_product(product_id: int, patch: ProductUpdate, db: Session = Depends(
     db.flush()
     db.refresh(product)  # reflect DB-quantized numerics in the response
     return _detail(product, db, load_margin_rules(db))
+
+
+@router.post("/{product_id}/repull")
+def repull_product(product_id: int, db: Session = Depends(get_db)):
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(404, "product not found")
+    supplier = db.get(Supplier, product.supplier_id) if product.supplier_id else None
+    if supplier is None:
+        raise HTTPException(409, "product has no supplier")
+    adapter = ADAPTERS.get(supplier.code)
+    if adapter is None:
+        raise HTTPException(409, f"no adapter for supplier '{supplier.code}'")
+    parsed = next(
+        (p for p in adapter.parse(adapter.fetch(supplier.feed_url)) if p.code == product.code),
+        None,
+    )
+    if parsed is None:
+        raise HTTPException(404, "product not found in supplier feed")
+    return dataclasses.asdict(parsed)
