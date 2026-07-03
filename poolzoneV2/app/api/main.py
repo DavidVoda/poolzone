@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routers import jobs, pricing, products
+from app.api.routers import categories, jobs, pricing, products, suppliers
 
 app = FastAPI(title="Poolzone admin")
 
@@ -21,6 +21,8 @@ app.add_middleware(
 app.include_router(products.router)
 app.include_router(pricing.router)
 app.include_router(jobs.router)
+app.include_router(categories.router)
+app.include_router(suppliers.router)
 
 
 @app.get("/api/health")

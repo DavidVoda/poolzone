@@ -186,3 +186,37 @@ def test_product_detail_children_roundtrip(client, seeded, db_session):
     assert [p["value"] for p in body["params"]] == ["11 m3/h", "230 V"]
     assert body["images"] == []
     assert body["categories"] == [{"category_id": cat.id, "primary_yn": False}]
+
+
+def test_list_suppliers(client, seeded):
+    rows = client.get("/api/suppliers").json()
+    assert rows[0]["code"] == "pooltechnika" and rows[0]["name"] == "P"
+
+
+def test_categories_crud_and_mappings(client, seeded, db_session):
+    root = client.post("/api/categories", json={"name": "Technologie", "parent_id": None}).json()
+    child = client.post("/api/categories", json={"name": "Čerpadla", "parent_id": root["id"]}).json()
+    assert child["parent_id"] == root["id"]
+
+    r = client.patch(f"/api/categories/{child['id']}", json={"seo_title": "Čerpadla | Poolzone"})
+    assert r.json()["seo_title"] == "Čerpadla | Poolzone"
+
+    # root has a child -> delete refused
+    assert client.delete(f"/api/categories/{root['id']}").status_code == 409
+
+    names = [c["name"] for c in client.get("/api/categories").json()]
+    assert names == ["Technologie", "Čerpadla"]
+
+    m = SupplierCategoryMap(
+        supplier_id=seeded.supplier_id, supplier_path="Bazény > Čerpadla", category_id=child["id"]
+    )
+    db_session.add(m)
+    db_session.flush()
+    rows = client.get(f"/api/categories/mappings?category_id={child['id']}").json()
+    assert rows[0]["supplier_path"] == "Bazény > Čerpadla"
+
+    r = client.patch(f"/api/categories/mappings/{m.id}", json={"category_id": root["id"]})
+    assert r.json()["category_id"] == root["id"]
+
+    # child now unreferenced -> delete OK
+    assert client.delete(f"/api/categories/{child['id']}").status_code == 200

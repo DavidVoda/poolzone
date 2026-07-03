@@ -96,6 +96,50 @@ class MarginRuleUpdate(BaseModel):
     margin_pct: Decimal
 
 
+class SupplierOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    code: str
+    name: str
+
+
+class CategoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    parent_id: int | None
+    name: str
+    seo_title: str | None
+    seo_description: str | None
+    upgates_code: str | None
+
+
+class CategoryCreate(BaseModel):
+    name: str
+    parent_id: int | None = None
+
+
+class CategoryUpdate(BaseModel):
+    name: str | None = None
+    parent_id: int | None = None
+    seo_title: str | None = None
+    seo_description: str | None = None
+
+
+class CategoryMappingOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    supplier_id: int
+    supplier_path: str
+    category_id: int
+
+
+class CategoryMappingUpdate(BaseModel):
+    category_id: int
+
+
 class JobRunOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
