@@ -14,7 +14,10 @@ class ProductOut(BaseModel):
     ean: str | None
     manufacturer: str | None
     title: str | None
+    short_description: str | None
     long_description: str | None
+    seo_title: str | None
+    seo_description: str | None
     url_slug: str | None
     stock: int | None
     weight: int | None
@@ -31,7 +34,10 @@ class ProductUpdate(BaseModel):
     """Owner-editable fields only. Supplier-owned fields (stock, price_purchase, ...) are not here."""
 
     title: str | None = None
+    short_description: str | None = None
     long_description: str | None = None
+    seo_title: str | None = None
+    seo_description: str | None = None
     url_slug: str | None = None
     active: bool | None = None
     coefficient: Decimal | None = None

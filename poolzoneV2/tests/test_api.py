@@ -91,3 +91,15 @@ def test_trigger_sync_uses_adapter(client, seeded, monkeypatch):
 
 def test_trigger_sync_unknown_supplier_404(client, seeded):
     assert client.post("/api/jobs/sync/nope").status_code == 404
+
+
+def test_update_product_content_fields(client, seeded):
+    r = client.patch(
+        f"/api/products/{seeded.id}",
+        json={"short_description": "krátký", "seo_title": "SEO", "seo_description": "popis"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["short_description"] == "krátký"
+    assert body["seo_title"] == "SEO"
+    assert body["seo_description"] == "popis"
