@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/app/StatusBadge"
 import { PricingCard } from "@/components/app/PricingCard"
+import { RePullDialog } from "@/components/app/RePullDialog"
 import { client, unwrap } from "@/lib/api"
 
 type Props = {
@@ -109,7 +110,11 @@ export function ProductPeekPanel({ productId, productIds, onNavigate, onClose }:
         <Button onClick={() => save.mutate()} disabled={!dirty || save.isPending}>
           Uložit
         </Button>
-        <span className="text-xs text-muted-foreground">↑↓ další/předchozí · Esc zavře</span>
+        <RePullDialog
+          productId={productId}
+          onApply={() => toast.info("Otevřete celý detail pro aplikaci obsahu z feedu.")}
+        />
+        <span className="text-xs text-muted-foreground">↑↓ · Esc</span>
       </div>
     </div>
   )
