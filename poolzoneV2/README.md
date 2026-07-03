@@ -27,6 +27,12 @@ Clean-restart rebuild. See `../docs/superpowers/specs/2026-07-02-poolzone-middle
     # Frontend dev (hot reload, proxies /api to :8000)
     cd frontend && npm install && npm run dev      # http://localhost:5173
     npm run build                                  # produces frontend/dist for prod
+    npm test                                       # vitest (pricing mirror, filters, unsaved guard)
+    npm run api:types                              # regenerate src/lib/api-types.d.ts after backend schema changes
+
+The admin UI is React 19 + shadcn/ui + TanStack Table/Query + TipTap (pool-blue theme,
+Czech). API types are generated from the FastAPI OpenAPI schema — rerun `api:types` whenever
+a router or schema changes so the typed client stays in sync.
 
 ## Bootstrap (one-time, loads legacy data into the DB)
 
