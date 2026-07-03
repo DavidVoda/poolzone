@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Frontend source lib (root .gitignore lib/ rule otherwise swallows it)
+!/src/lib/
