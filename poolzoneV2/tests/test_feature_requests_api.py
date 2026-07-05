@@ -1,7 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 
-import app.api.routers.feature_requests as fr
 from app.api.deps import get_db
 from app.api.main import app
 
@@ -14,71 +13,60 @@ def client(db_session):
 
 
 def _create(client, **kw):
-    body = {"title": "t", "description": "d", **kw}
-    return client.post("/api/feature-requests", json=body).json()
+    return client.post(
+        "/api/feature-requests", json={"title": "t", "description": "d", **kw}
+    ).json()
+
+
+def _to(client, rid, to, **body):
+    return client.post(f"/api/feature-requests/{rid}/transition", json={"to": to, **body})
 
 
 def test_create_list_get_patch(client):
     rid = _create(client, tag="ui", priority="high")["id"]
-
-    lst = client.get("/api/feature-requests").json()
-    assert any(r["id"] == rid for r in lst)
-
+    assert any(r["id"] == rid for r in client.get("/api/feature-requests").json())
     got = client.get(f"/api/feature-requests/{rid}").json()
     assert got["tag"] == "ui" and got["status"] == "draft"
+    assert (
+        client.patch(f"/api/feature-requests/{rid}", json={"plan": "# p"}).json()["plan"] == "# p"
+    )
 
-    patched = client.patch(f"/api/feature-requests/{rid}", json={"plan": "# p"}).json()
-    assert patched["plan"] == "# p"
 
-
-def test_plan_transition_schedules_runner(client, monkeypatch):
-    monkeypatch.setattr(fr.runner, "is_busy", lambda: False)
-    called = {}
-    monkeypatch.setattr(fr.runner, "run_plan", lambda rid: called.setdefault("id", rid))
+def test_illegal_transition_409(client):
     rid = _create(client)["id"]
-    resp = client.post(f"/api/feature-requests/{rid}/plan")
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "planning"
-    assert called["id"] == rid
+    assert _to(client, rid, "planned").status_code == 409  # draft can't jump to planned
 
 
-def test_plan_409_when_busy(client, monkeypatch):
-    monkeypatch.setattr(fr.runner, "is_busy", lambda: True)
+def test_happy_path(client):
     rid = _create(client)["id"]
-    assert client.post(f"/api/feature-requests/{rid}/plan").status_code == 409
+    assert _to(client, rid, "ready_for_plan").json()["status"] == "ready_for_plan"
+    assert _to(client, rid, "planning").json()["status"] == "planning"
+    # planning -> planned needs a plan
+    assert _to(client, rid, "planned").status_code == 422
+    r = _to(client, rid, "planned", plan="# Plan").json()
+    assert r["status"] == "planned" and r["plan"] == "# Plan"
+    assert _to(client, rid, "ready_for_impl").json()["status"] == "ready_for_impl"
+    assert _to(client, rid, "implementing").json()["status"] == "implementing"
+    r = _to(client, rid, "implemented", execution_log="edited GlobalSearch.tsx").json()
+    assert r["status"] == "implemented" and r["execution_log"] == "edited GlobalSearch.tsx"
 
 
-def test_approve_requires_planned(client):
+def test_replan_reset(client):
     rid = _create(client)["id"]
-    assert client.post(f"/api/feature-requests/{rid}/approve").status_code == 409
+    _to(client, rid, "ready_for_plan")
+    _to(client, rid, "planning")
+    _to(client, rid, "planned", plan="p")
+    # operator sends it back to draft with a note for the re-plan
+    r = _to(client, rid, "draft", review_note="use pricing helper").json()
+    assert r["status"] == "draft" and r["review_note"] == "use pricing helper"
 
 
-def test_reject_needs_note_and_returns_to_draft(client, monkeypatch, db_session):
-    from app.models import FeatureRequest
-
+def test_error_set_and_cleared(client):
     rid = _create(client)["id"]
-    db_session.get(FeatureRequest, rid).status = "planned"
-    db_session.flush()
-
-    # missing note -> 422
-    assert client.post(f"/api/feature-requests/{rid}/reject", json={}).status_code == 422
-
-    resp = client.post(f"/api/feature-requests/{rid}/reject", json={"review_note": "redo pricing"})
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "draft"
-    assert resp.json()["review_note"] == "redo pricing"
-
-
-def test_implement_requires_approved_or_failed(client, monkeypatch, db_session):
-    from app.models import FeatureRequest
-
-    monkeypatch.setattr(fr.runner, "is_busy", lambda: False)
-    monkeypatch.setattr(fr.runner, "run_implement", lambda rid: None)
-    rid = _create(client)["id"]
-    # draft -> 409
-    assert client.post(f"/api/feature-requests/{rid}/implement").status_code == 409
-
-    db_session.get(FeatureRequest, rid).status = "approved"
-    db_session.flush()
-    resp = client.post(f"/api/feature-requests/{rid}/implement")
-    assert resp.status_code == 200 and resp.json()["status"] == "implementing"
+    _to(client, rid, "ready_for_plan")
+    _to(client, rid, "planning")
+    # agent failed -> back to ready_for_plan with an error
+    r = _to(client, rid, "ready_for_plan", error="boom").json()
+    assert r["error"] == "boom"
+    # next successful claim clears it
+    assert _to(client, rid, "planning").json()["error"] is None

@@ -1,20 +1,36 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.agent import runner
 from app.api.deps import get_db
 from app.api.schemas import (
     FeatureRequestCreate,
     FeatureRequestOut,
     FeatureRequestPatch,
-    ReviewNote,
+    Transition,
 )
 from app.models import FeatureRequest
 
 router = APIRouter(prefix="/api/feature-requests", tags=["feature-requests"])
+
+# Guarded state machine. Agent execution is external now (a local claude session
+# runs the `feature-runner` skill, which dispatches a subagent per request and
+# writes changes to the CURRENT working tree — no commit). The backend only owns
+# status. Operator sets the two `ready_*`; the agent sets planning/planned/
+# implementing/implemented via this same endpoint.
+#
+# from -> {to: required_body_field_or_None}
+TRANSITIONS: dict[str, dict[str, str | None]] = {
+    "draft": {"ready_for_plan": None},
+    "ready_for_plan": {"planning": None, "draft": None},  # agent claims / operator cancels
+    "planning": {"planned": "plan", "ready_for_plan": None},  # done / failed-retry
+    "planned": {"ready_for_impl": None, "draft": None},  # operator approves / re-plans
+    "ready_for_impl": {"implementing": None, "planned": None},  # agent claims / cancels
+    "implementing": {"implemented": None, "ready_for_impl": None},  # done / failed-retry
+    "implemented": {"draft": None},  # redo from scratch if needed
+}
 
 
 def _get(db: Session, req_id: int) -> FeatureRequest:
@@ -22,11 +38,6 @@ def _get(db: Session, req_id: int) -> FeatureRequest:
     if req is None:
         raise HTTPException(404, "feature request not found")
     return req
-
-
-def _require(req: FeatureRequest, *allowed: str) -> None:
-    if req.status not in allowed:
-        raise HTTPException(409, f"action not allowed in status '{req.status}'")
 
 
 @router.get("", response_model=list[FeatureRequestOut])
@@ -52,54 +63,29 @@ def get_request(req_id: int, db: Session = Depends(get_db)):
 
 @router.patch("/{req_id}", response_model=FeatureRequestOut)
 def patch_request(req_id: int, body: FeatureRequestPatch, db: Session = Depends(get_db)):
+    """Edit content fields (title/description/priority/tag/plan). Not status — use /transition."""
     req = _get(db, req_id)
     for k, v in body.model_dump(exclude_unset=True).items():
         setattr(req, k, v)
     return req
 
 
-@router.post("/{req_id}/plan", response_model=FeatureRequestOut)
-def plan(req_id: int, tasks: BackgroundTasks, db: Session = Depends(get_db)):
+@router.post("/{req_id}/transition", response_model=FeatureRequestOut)
+def transition(req_id: int, body: Transition, db: Session = Depends(get_db)):
     req = _get(db, req_id)
-    _require(req, "draft")
-    if runner.is_busy():
-        raise HTTPException(409, "agent busy")
-    req.status = "planning"
-    req.error = None
-    # Commit the transient status NOW: the background task writes the terminal
-    # status in its own session and, in this FastAPI version, runs before this
-    # request session's teardown commit. Without an explicit commit here, that
-    # teardown would write a stale "planning" and clobber the task's result.
-    db.commit()
-    tasks.add_task(runner.run_plan, req.id)
-    return req
+    allowed = TRANSITIONS.get(req.status, {})
+    if body.to not in allowed:
+        raise HTTPException(409, f"illegal transition {req.status} -> {body.to}")
+    required = allowed[body.to]
+    if required and getattr(body, required) is None:
+        raise HTTPException(422, f"'{required}' required for -> {body.to}")
 
-
-@router.post("/{req_id}/approve", response_model=FeatureRequestOut)
-def approve(req_id: int, db: Session = Depends(get_db)):
-    req = _get(db, req_id)
-    _require(req, "planned")
-    req.status = "approved"
-    return req
-
-
-@router.post("/{req_id}/reject", response_model=FeatureRequestOut)
-def reject(req_id: int, body: ReviewNote, db: Session = Depends(get_db)):
-    req = _get(db, req_id)
-    _require(req, "planned")
-    req.status = "draft"
-    req.review_note = body.review_note
-    return req
-
-
-@router.post("/{req_id}/implement", response_model=FeatureRequestOut)
-def implement(req_id: int, tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    req = _get(db, req_id)
-    _require(req, "approved", "failed")
-    if runner.is_busy():
-        raise HTTPException(409, "agent busy")
-    req.status = "implementing"
-    req.error = None
-    db.commit()  # see /plan: persist transient status before the task can race it
-    tasks.add_task(runner.run_implement, req.id)
+    req.status = body.to
+    if body.plan is not None:
+        req.plan = body.plan
+    if body.execution_log is not None:
+        req.execution_log = body.execution_log
+    if body.review_note is not None:
+        req.review_note = body.review_note
+    req.error = body.error  # provided value or None (clears)
     return req

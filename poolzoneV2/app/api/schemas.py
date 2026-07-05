@@ -202,5 +202,9 @@ class FeatureRequestPatch(BaseModel):
     plan: str | None = None
 
 
-class ReviewNote(BaseModel):
-    review_note: str
+class Transition(BaseModel):
+    to: str
+    plan: str | None = None
+    execution_log: str | None = None
+    review_note: str | None = None
+    error: str | None = None

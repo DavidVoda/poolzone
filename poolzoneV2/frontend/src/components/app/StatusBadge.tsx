@@ -9,11 +9,12 @@ const STYLES: Record<string, string> = {
   active: "bg-green-100 text-green-700",
   inactive: "bg-slate-100 text-slate-500",
   draft: "bg-slate-100 text-slate-600",
+  ready_for_plan: "bg-amber-100 text-amber-700",
   planning: "bg-sky-100 text-sky-700",
   planned: "bg-indigo-100 text-indigo-700",
-  approved: "bg-amber-100 text-amber-700",
+  ready_for_impl: "bg-amber-100 text-amber-700",
   implementing: "bg-sky-100 text-sky-700",
-  done: "bg-green-100 text-green-700",
+  implemented: "bg-green-100 text-green-700",
 }
 
 const LABELS: Record<string, string> = {
@@ -24,11 +25,12 @@ const LABELS: Record<string, string> = {
   active: "aktivní",
   inactive: "neaktivní",
   draft: "koncept",
+  ready_for_plan: "k plánu",
   planning: "plánuji",
   planned: "naplánováno",
-  approved: "schváleno",
+  ready_for_impl: "k realizaci",
   implementing: "realizuji",
-  done: "hotovo",
+  implemented: "realizováno",
 }
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {

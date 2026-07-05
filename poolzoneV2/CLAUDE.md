@@ -16,9 +16,6 @@ and the rules.
   `ADAPTERS`. `poolzone.py` = eshop Upgates product+category import (GUI "Import dat").
 - `app/export/upgates_xml.py` — writes the outbound eshop feed.
 - `app/pricing.py` — margin resolution + sale-price formula.
-- `app/agent/runner.py` — feature-request pipeline: shells headless `claude -p` to plan
-  (read-only) and implement (in an isolated `git worktree`, one-at-a-time lock). Driven
-  by `routers/feature_requests.py`; procedure lives in `.claude/skills/feature-pipeline/`.
 - `app/migrations/` — Alembic. `scripts/bootstrap.py` — one-time legacy load.
 - `frontend/` — React 19, Vite, Tailwind 4, shadcn/ui, TanStack Table/Query, TipTap. Czech UI.
 - `tests/` — pytest, runs against a **separate** `poolzone_test` DB (see README).
@@ -61,8 +58,11 @@ and the rules.
 - The SPA catch-all in `main.py` serves `frontend/dist` — after a frontend change, `npm run
   build` before smoke-testing through uvicorn, or use the Vite dev server (`:5173`, proxies
   `/api`).
-- **Feature-request pipeline** needs `claude` on the backend host and a **pushable git
-  remote** (implement pushes the branch; the PR link is a GitHub compare URL built from
-  `origin` — no `gh` needed). A web button triggers unsandboxed code-gen + push, so keep
-  this app **localhost / trusted-operator only**; never expose it publicly without adding
-  auth + sandboxing.
+- **Feature-request pipeline** (`routers/feature_requests.py`): the backend only owns a
+  guarded status state machine (`/transition`) — it does NOT run any agent. The operator
+  flips a request to `ready_for_plan` / `ready_for_impl` in the UI; a local claude session
+  runs the **`feature-runner`** skill, which dispatches a subagent per request (procedure
+  in `.claude/skills/feature-pipeline/`) to plan/implement in the **current working tree,
+  no commit**. Operator reviews the diff and commits by hand. (A periodic runner is a
+  future note in the skill.) The old backend-spawns-`claude` runner is in
+  `archive/agent/`.

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ExternalLink, Plus } from "lucide-react"
+import { Plus } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,7 +28,8 @@ import { client, unwrap, type FeatureRequest } from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
 
 const PRIORITY_LABELS: Record<string, string> = { low: "nízká", normal: "normální", high: "vysoká" }
-const TRANSIENT = new Set(["planning", "implementing"])
+// Statuses where the agent may be working / about to pick up — poll these.
+const ACTIVE = new Set(["ready_for_plan", "planning", "ready_for_impl", "implementing"])
 type Sort = "updated" | "created" | "priority"
 const PRIORITY_RANK: Record<string, number> = { high: 0, normal: 1, low: 2 }
 
@@ -43,7 +44,7 @@ export default function FeatureRequests() {
   const { data: requests } = useQuery({
     queryKey: ["feature-requests"],
     queryFn: () => unwrap(client.GET("/api/feature-requests")),
-    refetchInterval: (q) => (q.state.data?.some((r) => TRANSIENT.has(r.status)) ? 4_000 : false),
+    refetchInterval: (q) => (q.state.data?.some((r) => ACTIVE.has(r.status)) ? 4_000 : false),
   })
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["feature-requests"] })
@@ -133,12 +134,12 @@ export default function FeatureRequests() {
 
 const STATUS_OPTS: [string, string][] = [
   ["draft", "koncept"],
+  ["ready_for_plan", "k plánu"],
   ["planning", "plánuji"],
   ["planned", "naplánováno"],
-  ["approved", "schváleno"],
+  ["ready_for_impl", "k realizaci"],
   ["implementing", "realizuji"],
-  ["done", "hotovo"],
-  ["failed", "chyba"],
+  ["implemented", "realizováno"],
 ]
 
 function FilterSelect({
@@ -252,25 +253,14 @@ function Detail({ req, onChanged }: { req: FeatureRequest; onChanged: () => void
   const [plan, setPlan] = useState(req.plan ?? "")
   const [note, setNote] = useState("")
 
-  const p = { params: { path: { req_id: req.id } } } as const
-  const action = useMutation({
-    mutationFn: (a: { kind: "plan" | "approve" | "reject" | "implement"; note?: string }) => {
-      switch (a.kind) {
-        case "plan":
-          return unwrap(client.POST("/api/feature-requests/{req_id}/plan", p))
-        case "approve":
-          return unwrap(client.POST("/api/feature-requests/{req_id}/approve", p))
-        case "implement":
-          return unwrap(client.POST("/api/feature-requests/{req_id}/implement", p))
-        case "reject":
-          return unwrap(
-            client.POST("/api/feature-requests/{req_id}/reject", {
-              ...p,
-              body: { review_note: a.note ?? "" },
-            }),
-          )
-      }
-    },
+  const move = useMutation({
+    mutationFn: (body: { to: string; review_note?: string }) =>
+      unwrap(
+        client.POST("/api/feature-requests/{req_id}/transition", {
+          params: { path: { req_id: req.id } },
+          body,
+        }),
+      ),
     onSuccess: () => onChanged(),
     onError: (e: Error) => toast.error(e.message),
   })
@@ -315,8 +305,8 @@ function Detail({ req, onChanged }: { req: FeatureRequest; onChanged: () => void
               <Button size="sm" variant="outline" onClick={() => savePlan.mutate()} disabled={savePlan.isPending}>
                 Uložit plán
               </Button>
-              <Button size="sm" onClick={() => action.mutate({ kind: "approve" })} disabled={action.isPending}>
-                Schválit
+              <Button size="sm" onClick={() => move.mutate({ to: "ready_for_impl" })} disabled={move.isPending}>
+                Připravit k realizaci
               </Button>
             </div>
             <div className="mt-3 space-y-1">
@@ -324,15 +314,15 @@ function Detail({ req, onChanged }: { req: FeatureRequest; onChanged: () => void
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
-                placeholder="Poznámka k zamítnutí (agent přeplánuje)"
+                placeholder="Poznámka pro přeplánování (agent ji uvidí)"
               />
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => action.mutate({ kind: "reject", note })}
-                disabled={!note || action.isPending}
+                onClick={() => move.mutate({ to: "draft", review_note: note || undefined })}
+                disabled={move.isPending}
               >
-                Zamítnout
+                Zpět na koncept
               </Button>
             </div>
           </section>
@@ -343,27 +333,29 @@ function Detail({ req, onChanged }: { req: FeatureRequest; onChanged: () => void
           </section>
         ) : null}
 
+        {/* Operator-driven gates (agent picks up the ready_* states out of band) */}
         {req.status === "draft" && (
-          <Button size="sm" onClick={() => action.mutate({ kind: "plan" })} disabled={action.isPending}>
-            Vygenerovat plán
+          <Button size="sm" onClick={() => move.mutate({ to: "ready_for_plan" })} disabled={move.isPending}>
+            Připravit k plánu
           </Button>
         )}
-        {(req.status === "approved" || req.status === "failed") && (
-          <Button size="sm" onClick={() => action.mutate({ kind: "implement" })} disabled={action.isPending}>
-            {req.status === "failed" ? "Zkusit znovu" : "Realizovat"}
-          </Button>
+        {req.status === "ready_for_plan" && (
+          <p className="text-sm text-muted-foreground">Čeká na agenta (plán). Spusť „feature-runner“.</p>
         )}
-        {TRANSIENT.has(req.status) && <p className="text-sm text-muted-foreground">Agent pracuje…</p>}
-
-        {req.pr_url && (
-          <a
-            href={req.pr_url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-          >
-            <ExternalLink className="size-3.5" /> Pull request ({req.branch})
-          </a>
+        {req.status === "planning" && <p className="text-sm text-muted-foreground">Agent plánuje…</p>}
+        {req.status === "ready_for_impl" && (
+          <p className="text-sm text-muted-foreground">Čeká na agenta (realizace). Spusť „feature-runner“.</p>
+        )}
+        {req.status === "implementing" && <p className="text-sm text-muted-foreground">Agent realizuje…</p>}
+        {req.status === "implemented" && (
+          <div className="space-y-2">
+            <p className="rounded-md bg-amber-50 p-2 text-sm text-amber-800">
+              Změny jsou v pracovním stromu (bez commitu) — zkontroluj a commitni ručně.
+            </p>
+            <Button size="sm" variant="outline" onClick={() => move.mutate({ to: "draft" })} disabled={move.isPending}>
+              Znovu od začátku
+            </Button>
+          </div>
         )}
 
         {req.execution_log && (

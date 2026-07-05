@@ -311,11 +311,14 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Patch Request */
+        /**
+         * Patch Request
+         * @description Edit content fields (title/description/priority/tag/plan). Not status — use /transition.
+         */
         patch: operations["patch_request_api_feature_requests__req_id__patch"];
         trace?: never;
     };
-    "/api/feature-requests/{req_id}/plan": {
+    "/api/feature-requests/{req_id}/transition": {
         parameters: {
             query?: never;
             header?: never;
@@ -324,59 +327,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Plan */
-        post: operations["plan_api_feature_requests__req_id__plan_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/feature-requests/{req_id}/approve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Approve */
-        post: operations["approve_api_feature_requests__req_id__approve_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/feature-requests/{req_id}/reject": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Reject */
-        post: operations["reject_api_feature_requests__req_id__reject_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/feature-requests/{req_id}/implement": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Implement */
-        post: operations["implement_api_feature_requests__req_id__implement_post"];
+        /** Transition */
+        post: operations["transition_api_feature_requests__req_id__transition_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -581,7 +533,7 @@ export interface components {
                 [key: string]: unknown;
             };
             /** Error */
-            error: string | null;
+            error?: string | null;
         };
         /** MarginRuleOut */
         MarginRuleOut: {
@@ -764,11 +716,6 @@ export interface components {
             /** Categories */
             categories?: components["schemas"]["ProductCategoryIO"][] | null;
         };
-        /** ReviewNote */
-        ReviewNote: {
-            /** Review Note */
-            review_note: string;
-        };
         /** SupplierOut */
         SupplierOut: {
             /** Id */
@@ -777,6 +724,19 @@ export interface components {
             code: string;
             /** Name */
             name: string;
+        };
+        /** Transition */
+        Transition: {
+            /** To */
+            to: string;
+            /** Plan */
+            plan?: string | null;
+            /** Execution Log */
+            execution_log?: string | null;
+            /** Review Note */
+            review_note?: string | null;
+            /** Error */
+            error?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -1492,69 +1452,7 @@ export interface operations {
             };
         };
     };
-    plan_api_feature_requests__req_id__plan_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                req_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FeatureRequestOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    approve_api_feature_requests__req_id__approve_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                req_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FeatureRequestOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    reject_api_feature_requests__req_id__reject_post: {
+    transition_api_feature_requests__req_id__transition_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -1565,40 +1463,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ReviewNote"];
+                "application/json": components["schemas"]["Transition"];
             };
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FeatureRequestOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    implement_api_feature_requests__req_id__implement_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                req_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

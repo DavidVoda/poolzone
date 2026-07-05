@@ -42,21 +42,20 @@ works, no speculative abstractions. Output the plan and nothing else.
 
 ## IMPLEMENTING
 
-Input: an approved plan. Your current working directory is **already an isolated git
-worktree on a fresh branch** — just work here; do not create branches or worktrees.
+Input: an approved plan. You work in the operator's **current checkout and current
+branch**. **Do NOT commit, push, branch, stash, or create a worktree** — leave the
+changes in the working tree for the operator to review and commit by hand.
 
 1. Implement the plan. Follow existing patterns in the touched files.
 2. Honour the invariants above — migration if schema changed, `npm run api:types` if
    the API changed, both pricing files if pricing changed.
-3. **Verify before committing:**
+3. **Verify (no commit):**
    - Backend: `./.venv/bin/pytest` (from `poolzoneV2/`) — must pass.
    - Frontend (if touched): `cd frontend && npm run build && npm run lint` — must pass.
    - `./.venv/bin/ruff format app tests && ./.venv/bin/ruff check app tests`.
-4. Commit with a Conventional Commit message describing the change.
-5. Push: `git push -u origin <current-branch>`. **Do not open a PR** — the caller
-   builds a GitHub compare/PR link from the pushed branch. Plain git only; `gh` is
-   not required.
+4. **Report** a short summary: which files you changed and the verification results.
+   Do not touch git.
 
-If the push fails (no remote, unauthenticated, DB down, tests red), **stop and report
-exactly what failed** — do not fake success. A partial, honest failure is recoverable;
-a false "done" is not.
+If a step fails (tests red, build broken, DB down), **stop and report exactly what
+failed** — do not fake success and do not revert the partial work; the operator
+decides. A partial, honest failure is recoverable; a false "done" is not.
