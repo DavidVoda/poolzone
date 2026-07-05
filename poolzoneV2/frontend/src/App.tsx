@@ -7,6 +7,7 @@ import FeedMapping from "@/pages/FeedMapping"
 import Feeds from "@/pages/Feeds"
 import Pricing from "@/pages/Pricing"
 import Jobs from "@/pages/Jobs"
+import FeatureRequests from "@/pages/FeatureRequests"
 
 const router = createBrowserRouter([
   {
@@ -19,6 +20,7 @@ const router = createBrowserRouter([
       { path: "/feeds", element: <Feeds /> },
       { path: "/pricing", element: <Pricing /> },
       { path: "/jobs", element: <Jobs /> },
+      { path: "/feature-requests", element: <FeatureRequests /> },
     ],
   },
 ])

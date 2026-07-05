@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom"
-import { BarChart3, Coins, DownloadCloud, FolderTree, Package, Play, Sparkles, Workflow } from "lucide-react"
+import { BarChart3, Coins, DownloadCloud, FolderTree, Lightbulb, Package, Play, Sparkles, Workflow } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { GlobalSearch } from "./GlobalSearch"
 import { JobStatusChip } from "./JobStatusChip"
@@ -10,6 +10,7 @@ const NAV = [
   { to: "/feed-mapping", label: "Transformace", icon: Workflow },
   { to: "/feeds", label: "Import dat", icon: DownloadCloud },
   { to: "/pricing", label: "Ceny", icon: Coins },
+  { to: "/feature-requests", label: "Požadavky", icon: Lightbulb },
   { to: "/suggestions", label: "Návrhy", icon: Sparkles, disabled: true },
   { to: "/competitors", label: "Konkurence", icon: BarChart3, disabled: true },
   { to: "/jobs", label: "Úlohy", icon: Play },
