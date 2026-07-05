@@ -23,7 +23,7 @@ def _req(db, **kw):
 
 def test_run_plan_success(db_session, monkeypatch):
     rid = _req(db_session)
-    monkeypatch.setattr(runner, "_claude", lambda p, c: "# Plan\nstep 1")
+    monkeypatch.setattr(runner, "_claude", lambda *a, **k: "# Plan\nstep 1")
     monkeypatch.setattr(runner, "session_scope", _scope(db_session))
     runner.run_plan(rid)
     db_session.expire_all()
@@ -35,7 +35,7 @@ def test_run_plan_success(db_session, monkeypatch):
 def test_run_plan_failure_returns_to_draft(db_session, monkeypatch):
     rid = _req(db_session)
 
-    def boom(p, c):
+    def boom(*a, **k):
         raise RuntimeError("claude down")
 
     monkeypatch.setattr(runner, "_claude", boom)
@@ -49,7 +49,7 @@ def test_run_plan_failure_returns_to_draft(db_session, monkeypatch):
 
 def test_run_implement_builds_compare_url(db_session, monkeypatch):
     rid = _req(db_session, status="implementing", plan="do the thing")
-    monkeypatch.setattr(runner, "_claude", lambda p, c: "committed and pushed")
+    monkeypatch.setattr(runner, "_claude", lambda *a, **k: "committed and pushed")
     monkeypatch.setattr(runner, "_git", lambda *a: None)
     monkeypatch.setattr(
         runner, "_compare_url", lambda b: f"https://github.com/o/r/compare/{b}?expand=1"
