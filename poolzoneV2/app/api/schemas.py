@@ -149,7 +149,7 @@ class JobRunOut(BaseModel):
     started_at: datetime | None
     finished_at: datetime | None
     stats: dict
-    error: str | None
+    error: str | None = None  # not a JobRun column; failures live in stats
 
 
 class FeedConfigOut(BaseModel):
