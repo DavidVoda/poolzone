@@ -7,7 +7,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routers import categories, feeds, jobs, pricing, products, suppliers
+from app.api.routers import (
+    categories,
+    feature_requests,
+    feeds,
+    jobs,
+    pricing,
+    products,
+    suppliers,
+)
 
 app = FastAPI(title="Poolzone admin")
 
@@ -25,6 +33,7 @@ app.include_router(jobs.router)
 app.include_router(categories.router)
 app.include_router(suppliers.router)
 app.include_router(feeds.router)
+app.include_router(feature_requests.router)
 
 
 @app.get("/api/health")

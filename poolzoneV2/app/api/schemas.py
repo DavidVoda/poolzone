@@ -166,3 +166,41 @@ class FeedConfigOut(BaseModel):
 class FeedConfigUpdate(BaseModel):
     feed_url: str | None = None
     update_whitelist: list[str] | None = None
+
+
+class FeatureRequestOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    description: str
+    priority: str
+    tag: str | None
+    status: str
+    plan: str | None
+    review_note: str | None
+    execution_log: str | None
+    branch: str | None
+    pr_url: str | None
+    error: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class FeatureRequestCreate(BaseModel):
+    title: str
+    description: str
+    priority: str = "normal"
+    tag: str | None = None
+
+
+class FeatureRequestPatch(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    priority: str | None = None
+    tag: str | None = None
+    plan: str | None = None
+
+
+class ReviewNote(BaseModel):
+    review_note: str

@@ -95,7 +95,11 @@ def parse_products(raw: bytes) -> list[dict]:
                 "stock": _int(p.findtext("STOCK")),
                 "weight": _int(p.findtext("WEIGHT")),
                 "active": _yn(p.findtext("ACTIVE_YN")),
-                "images": [u.text.strip() for u in p.findall("IMAGES/IMAGE/URL") if u.text and u.text.strip()],
+                "images": [
+                    u.text.strip()
+                    for u in p.findall("IMAGES/IMAGE/URL")
+                    if u.text and u.text.strip()
+                ],
                 "params": [
                     (n, (v or "").strip())
                     for param in p.findall("PARAMETERS/PARAMETER")
@@ -197,9 +201,11 @@ def import_products(session: Session, raw: bytes, whitelist: list[str]) -> dict:
         try:
             # Match by code across all suppliers — the eshop code is the real key.
             # ponytail: first match wins; refine if duplicate codes across suppliers appear.
-            existing = session.execute(
-                select(Product).where(Product.code == spec["code"])
-            ).scalars().first()
+            existing = (
+                session.execute(select(Product).where(Product.code == spec["code"]))
+                .scalars()
+                .first()
+            )
             if existing is None:
                 product = Product(code=spec["code"])
                 _apply_product(product, spec, all_fields, cat_by_code, session)
