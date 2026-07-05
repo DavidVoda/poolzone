@@ -13,6 +13,27 @@ SKILL = ".claude/skills/feature-pipeline/SKILL.md"
 _TIMEOUT = 1800  # 30 min per claude run
 LOG_DIR = Path("/tmp/poolzone-agent")  # per-request live logs: tail -f to watch
 
+# The implement worktree has no virtualenv (.venv is gitignored), so backend tools
+# are run from the MAIN checkout's venv by absolute path.
+VENV_BIN = REPO / "poolzoneV2" / ".venv" / "bin"
+
+# Headless claude has no interactive approver. Pre-authorize a SCOPED tool set so
+# runs don't stall on prompts, without a blanket --dangerously-skip-permissions.
+# Plan is read-only; implement may edit/commit/push and run the dev toolchain.
+_PLAN_TOOLS = ["Read", "Grep", "Glob"]
+_IMPL_TOOLS = [
+    *_PLAN_TOOLS,
+    "Edit",
+    "Write",
+    "Bash(git:*)",
+    "Bash(npm:*)",
+    "Bash(npx:*)",
+    "Bash(node:*)",
+    f"Bash({VENV_BIN}/pytest:*)",
+    f"Bash({VENV_BIN}/ruff:*)",
+    f"Bash({VENV_BIN}/python:*)",
+]
+
 
 def log_path(req_id: int, phase: str) -> Path:
     return LOG_DIR / f"req-{req_id}-{phase}.log"
@@ -31,10 +52,13 @@ def is_busy() -> bool:
     return _lock.locked()
 
 
-def _claude(prompt: str, cwd: Path, out: Path, verbose: bool = False) -> str:
+def _claude(prompt: str, cwd: Path, out: Path, allowed: list[str], verbose: bool = False) -> str:
     """Run headless claude, streaming stdout+stderr live to `out` (tail -f to watch)."""
     out.parent.mkdir(parents=True, exist_ok=True)
-    cmd = ["claude", "-p", prompt] + (["--verbose"] if verbose else [])
+    cmd = ["claude", "-p", "--allowedTools", ",".join(allowed)]
+    if verbose:
+        cmd.append("--verbose")
+    cmd.append(prompt)
     with out.open("w") as f:
         r = subprocess.run(
             cmd, cwd=cwd, stdout=f, stderr=subprocess.STDOUT, text=True, timeout=_TIMEOUT
@@ -79,7 +103,10 @@ def _impl_prompt(plan: str) -> str:
     return (
         f"Read {SKILL} and follow its IMPLEMENTING section.\n\n"
         f"Implement this plan:\n\n{plan}\n\n"
-        "Commit and push the branch. Do NOT open a PR — the caller builds the PR link."
+        f"This is a fresh git worktree with no virtualenv — run backend Python tools "
+        f"from the main checkout's venv by absolute path, e.g. `{VENV_BIN}/pytest` and "
+        f"`{VENV_BIN}/ruff`. Commit and push the branch. Do NOT open a PR — the caller "
+        f"builds the PR link."
     )
 
 
@@ -97,7 +124,7 @@ def run_plan(req_id: int) -> None:
     try:
         with session_scope() as db:
             prompt = _plan_prompt(db.get(FeatureRequest, req_id))
-        out = _claude(prompt, REPO, log_path(req_id, "plan"))
+        out = _claude(prompt, REPO, log_path(req_id, "plan"), _PLAN_TOOLS)
         _set(req_id, plan=out, status="planned", error=None, review_note=None)
     except Exception as e:  # noqa: BLE001 - surface any failure to the operator
         _set(req_id, status="draft", error=str(e)[:2000])
@@ -116,7 +143,9 @@ def run_implement(req_id: int) -> None:
             plan = db.get(FeatureRequest, req_id).plan or ""
         _git("worktree", "add", str(tree), "-b", branch)
         try:
-            out = _claude(_impl_prompt(plan), tree, log_path(req_id, "implement"), verbose=True)
+            out = _claude(
+                _impl_prompt(plan), tree, log_path(req_id, "implement"), _IMPL_TOOLS, verbose=True
+            )
         finally:
             _git("worktree", "remove", "--force", str(tree))
         _set(
