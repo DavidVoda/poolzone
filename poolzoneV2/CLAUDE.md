@@ -61,7 +61,8 @@ and the rules.
 - The SPA catch-all in `main.py` serves `frontend/dist` — after a frontend change, `npm run
   build` before smoke-testing through uvicorn, or use the Vite dev server (`:5173`, proxies
   `/api`).
-- **Feature-request pipeline** needs `claude` **and** `gh` authenticated on the backend host
-  (implement → PR reaches the git remote — not purely local). A web button triggers
-  unsandboxed code-gen + push, so keep this app **localhost / trusted-operator only**; never
-  expose it publicly without adding auth + sandboxing.
+- **Feature-request pipeline** needs `claude` on the backend host and a **pushable git
+  remote** (implement pushes the branch; the PR link is a GitHub compare URL built from
+  `origin` — no `gh` needed). A web button triggers unsandboxed code-gen + push, so keep
+  this app **localhost / trusted-operator only**; never expose it publicly without adding
+  auth + sandboxing.

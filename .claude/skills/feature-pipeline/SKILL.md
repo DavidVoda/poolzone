@@ -53,10 +53,10 @@ worktree on a fresh branch** — just work here; do not create branches or workt
    - Frontend (if touched): `cd frontend && npm run build && npm run lint` — must pass.
    - `./.venv/bin/ruff format app tests && ./.venv/bin/ruff check app tests`.
 4. Commit with a Conventional Commit message describing the change.
-5. Push: `git push -u origin <current-branch>`.
-6. Open a PR: `gh pr create --fill`.
-7. **Print the PR URL as the very last line of your output.**
+5. Push: `git push -u origin <current-branch>`. **Do not open a PR** — the caller
+   builds a GitHub compare/PR link from the pushed branch. Plain git only; `gh` is
+   not required.
 
-If a required tool is missing or unauthenticated (`gh`, git remote, DB), **stop and
-report exactly what failed** — do not fake success. A partial, honest failure is
-recoverable; a false "done" is not.
+If the push fails (no remote, unauthenticated, DB down, tests red), **stop and report
+exactly what failed** — do not fake success. A partial, honest failure is recoverable;
+a false "done" is not.

@@ -47,14 +47,30 @@ def test_run_plan_failure_returns_to_draft(db_session, monkeypatch):
     assert "claude down" in r.error
 
 
-def test_run_implement_parses_pr_url(db_session, monkeypatch):
+def test_run_implement_builds_compare_url(db_session, monkeypatch):
     rid = _req(db_session, status="implementing", plan="do the thing")
-    monkeypatch.setattr(runner, "_claude", lambda p, c: "done\nhttps://github.com/x/y/pull/42")
+    monkeypatch.setattr(runner, "_claude", lambda p, c: "committed and pushed")
     monkeypatch.setattr(runner, "_git", lambda *a: None)
+    monkeypatch.setattr(
+        runner, "_compare_url", lambda b: f"https://github.com/o/r/compare/{b}?expand=1"
+    )
     monkeypatch.setattr(runner, "session_scope", _scope(db_session))
     runner.run_implement(rid)
     db_session.expire_all()
     r = db_session.get(FeatureRequest, rid)
     assert r.status == "done"
-    assert r.pr_url == "https://github.com/x/y/pull/42"
     assert r.branch == f"feat/req-{rid}"
+    assert r.pr_url == f"https://github.com/o/r/compare/feat/req-{rid}?expand=1"
+
+
+def test_compare_url_from_ssh_remote(monkeypatch):
+    import subprocess
+
+    class R:
+        returncode = 0
+        stdout = "git@github.com:acme/poolzone.git\n"
+
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: R())
+    assert (
+        runner._compare_url("feat/x") == "https://github.com/acme/poolzone/compare/feat/x?expand=1"
+    )

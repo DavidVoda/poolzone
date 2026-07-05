@@ -42,6 +42,19 @@ def _git(*args: str) -> None:
     subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True, check=True)
 
 
+def _compare_url(branch: str) -> str | None:
+    """GitHub 'open a PR' URL for a pushed branch, derived from origin. No gh needed."""
+    r = subprocess.run(
+        ["git", "remote", "get-url", "origin"], cwd=REPO, capture_output=True, text=True
+    )
+    if r.returncode != 0:
+        return None
+    m = re.match(r"(?:git@|https://|ssh://git@)([^:/]+)[:/](.+?)(?:\.git)?/?$", r.stdout.strip())
+    if not m:
+        return None
+    return f"https://{m.group(1)}/{m.group(2)}/compare/{branch}?expand=1"
+
+
 def _plan_prompt(req: FeatureRequest) -> str:
     note = (
         f"\n\nA previous plan was rejected. Operator note:\n{req.review_note}"
@@ -59,7 +72,7 @@ def _impl_prompt(plan: str) -> str:
     return (
         f"Read {SKILL} and follow its IMPLEMENTING section.\n\n"
         f"Implement this plan:\n\n{plan}\n\n"
-        "Print the opened PR URL as the last line of your output."
+        "Commit and push the branch. Do NOT open a PR — the caller builds the PR link."
     )
 
 
@@ -99,12 +112,11 @@ def run_implement(req_id: int) -> None:
             out = _claude(_impl_prompt(plan), tree)
         finally:
             _git("worktree", "remove", "--force", str(tree))
-        m = re.search(r"https://\S+/pull/\d+", out)
         _set(
             req_id,
             execution_log=out,
             branch=branch,
-            pr_url=(m.group(0) if m else None),
+            pr_url=_compare_url(branch),
             status="done",
             error=None,
         )
