@@ -66,6 +66,11 @@ def plan(req_id: int, tasks: BackgroundTasks, db: Session = Depends(get_db)):
         raise HTTPException(409, "agent busy")
     req.status = "planning"
     req.error = None
+    # Commit the transient status NOW: the background task writes the terminal
+    # status in its own session and, in this FastAPI version, runs before this
+    # request session's teardown commit. Without an explicit commit here, that
+    # teardown would write a stale "planning" and clobber the task's result.
+    db.commit()
     tasks.add_task(runner.run_plan, req.id)
     return req
 
@@ -95,5 +100,6 @@ def implement(req_id: int, tasks: BackgroundTasks, db: Session = Depends(get_db)
         raise HTTPException(409, "agent busy")
     req.status = "implementing"
     req.error = None
+    db.commit()  # see /plan: persist transient status before the task can race it
     tasks.add_task(runner.run_implement, req.id)
     return req
