@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Play, Save } from "lucide-react"
+import { CalendarClock, Play, RefreshCw, Save } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PageHeader } from "@/components/app/PageHeader"
+import { StatusBadge } from "@/components/app/StatusBadge"
 import { client, unwrap, type FeedConfig } from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
+import { useT } from "@/lib/i18n"
 
 const KIND_LABELS: Record<string, string> = { products: "Produkty", categories: "Kategorie" }
 
@@ -31,7 +33,8 @@ const FIELD_LABELS: Record<string, string> = {
   parent: "Nadřazená kategorie",
 }
 
-function FeedCard({ feed }: { feed: FeedConfig }) {
+function FeedCard({ feed, busy }: { feed: FeedConfig; busy: boolean }) {
+  const { t } = useT()
   const queryClient = useQueryClient()
   const [url, setUrl] = useState(feed.feed_url ?? "")
   const [selected, setSelected] = useState<string[]>(feed.update_whitelist)
@@ -57,7 +60,7 @@ function FeedCard({ feed }: { feed: FeedConfig }) {
         }),
       ),
     onSuccess: () => {
-      toast.success("Uloženo")
+      toast.success(t("Uloženo"))
       invalidate()
     },
     onError: (e: Error) => toast.error(e.message),
@@ -67,7 +70,7 @@ function FeedCard({ feed }: { feed: FeedConfig }) {
     mutationFn: () =>
       unwrap(client.POST("/api/feeds/{kind}/run", { params: { path: { kind: feed.kind } } })),
     onSuccess: (stats) => {
-      toast.success(`Import dokončen: ${JSON.stringify(stats)}`)
+      toast.success(`${t("Import dokončen")}: ${JSON.stringify(stats)}`)
       invalidate()
     },
     onError: (e: Error) => toast.error(e.message),
@@ -79,14 +82,14 @@ function FeedCard({ feed }: { feed: FeedConfig }) {
   return (
     <div className="space-y-4 rounded-lg border bg-card p-5 shadow-sm">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">{KIND_LABELS[feed.kind] ?? feed.kind}</h3>
+        <h3 className="text-lg font-semibold">{t(KIND_LABELS[feed.kind] ?? feed.kind)}</h3>
         <span className="text-sm text-muted-foreground">
-          Poslední import: {formatDateTime(feed.last_run_at)}
+          {t("Poslední import")}: {formatDateTime(feed.last_run_at)}
         </span>
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor={`url-${feed.kind}`}>URL zdroje</Label>
+        <Label htmlFor={`url-${feed.kind}`}>{t("URL zdroje")}</Label>
         <Input
           id={`url-${feed.kind}`}
           value={url}
@@ -96,16 +99,17 @@ function FeedCard({ feed }: { feed: FeedConfig }) {
       </div>
 
       <div className="space-y-2">
-        <Label>Přepisovat pole (whitelist)</Label>
+        <Label>{t("Přepisovat pole (whitelist)")}</Label>
         <p className="text-xs text-muted-foreground">
-          Zaškrtnutá pole se u existujících položek přepíší z feedu. Nezaškrtnutá zůstanou
-          zachována. Nové položky se vždy vytvoří kompletní.
+          {t(
+            "Zaškrtnutá pole se u existujících položek přepíší z feedu. Nezaškrtnutá zůstanou zachována. Nové položky se vždy vytvoří kompletní.",
+          )}
         </p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {feed.available_fields.map((f) => (
             <label key={f} className="flex items-center gap-2 text-sm">
               <Checkbox checked={selected.includes(f)} onCheckedChange={() => toggle(f)} />
-              {FIELD_LABELS[f] ?? f}
+              {t(FIELD_LABELS[f] ?? f)}
             </label>
           ))}
         </div>
@@ -113,10 +117,126 @@ function FeedCard({ feed }: { feed: FeedConfig }) {
 
       <div className="flex gap-2 pt-1">
         <Button size="sm" variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
-          <Save className="size-4" /> Uložit
+          <Save className="size-4" /> {t("Uložit")}
         </Button>
-        <Button size="sm" onClick={() => run.mutate()} disabled={run.isPending}>
-          <Play className="size-4" /> {run.isPending ? "Import běží…" : "Aktualizovat teď"}
+        <Button size="sm" onClick={() => run.mutate()} disabled={run.isPending || busy}>
+          <Play className="size-4" /> {run.isPending ? t("Import běží…") : t("Aktualizovat teď")}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function AutoRunInfo() {
+  const { t } = useT()
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
+      <CalendarClock className="mt-0.5 size-5 shrink-0 text-amber-600" />
+      <div>
+        <div className="font-medium text-amber-900">{t("Automatické spouštění")}</div>
+        <p className="text-amber-800">
+          {t(
+            "Žádná automatická úloha není nastavena — importy spouští operátor ručně tlačítky níže.",
+          )}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// Section 1: supplier feed (Pooltechnika) → sync via the supplier adapter.
+function PooltechnikaCard({ busy }: { busy: boolean }) {
+  const { t } = useT()
+  const queryClient = useQueryClient()
+
+  const { data: suppliers } = useQuery({
+    queryKey: ["suppliers"],
+    queryFn: () => unwrap(client.GET("/api/suppliers")),
+  })
+  const supplier = suppliers?.find((s) => s.code === "pooltechnika")
+  const [url, setUrl] = useState("")
+  useEffect(() => setUrl(supplier?.feed_url ?? ""), [supplier?.feed_url])
+
+  const { data: runs } = useQuery({
+    queryKey: ["jobs", "sync", "latest"],
+    queryFn: () =>
+      unwrap(client.GET("/api/jobs", { params: { query: { kind: "sync", limit: 1 } } })),
+    refetchInterval: (q) => (q.state.data?.[0]?.status === "running" ? 3_000 : false),
+  })
+  const last = runs?.[0]
+
+  const save = useMutation({
+    mutationFn: () =>
+      unwrap(
+        client.PATCH("/api/suppliers/{code}", {
+          params: { path: { code: "pooltechnika" } },
+          body: { feed_url: url },
+        }),
+      ),
+    onSuccess: () => {
+      toast.success(t("Uloženo"))
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const sync = useMutation({
+    mutationFn: () =>
+      unwrap(
+        client.POST("/api/jobs/sync/{supplier_code}", {
+          params: { path: { supplier_code: "pooltechnika" } },
+        }),
+      ),
+    onSuccess: () => {
+      toast.success(t("Synchronizace dokončena"))
+      queryClient.invalidateQueries({ queryKey: ["jobs"] })
+      queryClient.invalidateQueries({ queryKey: ["products"] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  // The sync POST blocks until done; poll while pending so the running job surfaces.
+  useEffect(() => {
+    if (!sync.isPending) return
+    const id = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ["jobs", "sync", "latest"] })
+      queryClient.invalidateQueries({ queryKey: ["jobs", "running"] })
+    }, 1500)
+    return () => clearInterval(id)
+  }, [sync.isPending, queryClient])
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-card p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-lg font-semibold">Pooltechnika</h3>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {last && <StatusBadge status={last.status} />}
+          <span>
+            {t("Poslední synchronizace")}: {formatDateTime(last?.finished_at ?? last?.started_at)}
+          </span>
+        </div>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {t(
+          "Stáhne dodavatelský feed (Heureka XML) a upsertne produkty pravidlem create-full / update-whitelist. Mapování polí viz Transformace.",
+        )}
+      </p>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="pt-url">{t("URL zdroje")}</Label>
+        <Input id="pt-url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" />
+      </div>
+
+      <div className="flex gap-2 pt-1">
+        <Button size="sm" variant="outline" onClick={() => save.mutate()} disabled={save.isPending || !supplier}>
+          <Save className="size-4" /> {t("Uložit")}
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => sync.mutate()}
+          disabled={sync.isPending || !url || busy}
+        >
+          <RefreshCw className="size-4" /> {sync.isPending ? t("Synchronizace běží…") : t("Synchronizovat teď")}
         </Button>
       </div>
     </div>
@@ -124,15 +244,41 @@ function FeedCard({ feed }: { feed: FeedConfig }) {
 }
 
 export default function Feeds() {
+  const { t } = useT()
   const { data: feeds } = useQuery({
     queryKey: ["feeds"],
     queryFn: () => unwrap(client.GET("/api/feeds")),
   })
+  // Any running job disables every import trigger on the page (matches the 409 guard).
+  const { data: latest } = useQuery({
+    queryKey: ["jobs", "running"],
+    queryFn: () => unwrap(client.GET("/api/jobs", { params: { query: { limit: 1 } } })),
+    refetchInterval: (q) => (q.state.data?.[0]?.status === "running" ? 3_000 : false),
+  })
+  const busy = latest?.[0]?.status === "running"
 
   return (
     <>
-      <PageHeader title="Import dat" />
-      <div className="space-y-5">{feeds?.map((f) => <FeedCard key={f.kind} feed={f} />)}</div>
+      <PageHeader title={t("Import dat")} />
+      <div className="space-y-6">
+        <AutoRunInfo />
+
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            {t("Dodavatelský feed")}
+          </h2>
+          <PooltechnikaCard busy={busy} />
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            {t("E-shop Upgates (import)")}
+          </h2>
+          <div className="space-y-5">
+            {feeds?.map((f) => <FeedCard key={f.kind} feed={f} busy={busy} />)}
+          </div>
+        </section>
+      </div>
     </>
   )
 }

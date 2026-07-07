@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.api.schemas import FeedConfigOut, FeedConfigUpdate
-from app.models import FeedConfig, JobRun
+from app.job_run import JobBusyError, job_run
+from app.models import FeedConfig
 from app.sync import poolzone
 
 router = APIRouter(prefix="/api/feeds", tags=["feeds"])
@@ -68,20 +69,20 @@ def run_feed(kind: str, db: Session = Depends(get_db)):
         raise HTTPException(404, f"unknown feed '{kind}'")
     cfg = _get_or_create(db, kind)
     if not cfg.feed_url:
-        raise HTTPException(409, f"feed '{kind}' has no URL")
+        raise HTTPException(400, f"feed '{kind}' has no URL configured")
     _, _, importer = _KINDS[kind]
 
     # ponytail: synchronous — a manual admin click that waits is fine at this scale.
-    # On failure the request rolls back (get_db), so no partial import or job row —
-    # matches the supplier trigger_sync behaviour; only successful runs are recorded.
-    raw = poolzone.fetch(cfg.feed_url)
-    job = JobRun(kind="sync", status="running", stats={})
-    db.add(job)
-    db.flush()
-    stats = importer(db, raw, cfg.update_whitelist)
-    job.status = "success"
-    job.stats = stats
-    job.finished_at = datetime.now(timezone.utc)
-    cfg.last_run_at = datetime.now(timezone.utc)
-    db.flush()
-    return stats
+    # job_run commits the 'running' row up front — visible for the whole run, INCLUDING the
+    # fetch, and blocks concurrent starts. Distinct kind so the Jobs tab shows WHAT ran.
+    try:
+        with job_run(db, f"import:{kind}") as job:
+            try:
+                raw = poolzone.fetch(cfg.feed_url)
+            except Exception as exc:  # network failure — clean 502, records a failed job
+                raise HTTPException(502, f"feed fetch failed: {exc}") from exc
+            job.stats = importer(db, raw, cfg.update_whitelist)
+            cfg.last_run_at = datetime.now(timezone.utc)
+            return job.stats
+    except JobBusyError:
+        raise HTTPException(409, "a job is already running") from None

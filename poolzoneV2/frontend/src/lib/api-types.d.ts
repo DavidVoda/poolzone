@@ -228,6 +228,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/suppliers/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Supplier */
+        patch: operations["update_supplier_api_suppliers__code__patch"];
+        trace?: never;
+    };
     "/api/feeds": {
         parameters: {
             query?: never;
@@ -724,6 +741,15 @@ export interface components {
             code: string;
             /** Name */
             name: string;
+            /** Feed Url */
+            feed_url?: string | null;
+            /** Last Synced At */
+            last_synced_at?: string | null;
+        };
+        /** SupplierUpdate */
+        SupplierUpdate: {
+            /** Feed Url */
+            feed_url?: string | null;
         };
         /** Transition */
         Transition: {
@@ -1232,6 +1258,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupplierOut"][];
+                };
+            };
+        };
+    };
+    update_supplier_api_suppliers__code__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplierUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

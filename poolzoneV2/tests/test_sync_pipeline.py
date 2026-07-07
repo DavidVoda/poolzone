@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from app.models import JobRun, Product, ProductImage, ProductParam, Supplier
+from app.models import Product, ProductImage, ProductParam, Supplier
 from app.sync.pipeline import run_sync
 from app.sync.types import ParsedParam, ParsedProduct
 
@@ -73,10 +73,10 @@ def test_existing_product_images_and_params_not_resynced(db_session):
     assert urls == {"http://img/1.jpg"}  # original image kept, not replaced
 
 
-def test_run_records_job_run(db_session):
+def test_run_returns_stats_and_stamps_supplier(db_session):
+    # run_sync is a pure upsert now — the caller (router/CLI) owns the JobRun via job_run.
     supplier = _supplier(db_session)
-    run_sync(db_session, supplier, [_parsed("AK1"), _parsed("AK2")])
-    job = db_session.query(JobRun).filter_by(kind="sync").order_by(JobRun.id.desc()).first()
-    assert job.status == "success"
-    assert job.stats["products_seen"] == 2
-    assert job.stats["created"] == 2
+    stats = run_sync(db_session, supplier, [_parsed("AK1"), _parsed("AK2")])
+    assert stats["products_seen"] == 2
+    assert stats["created"] == 2
+    assert supplier.last_synced_at is not None

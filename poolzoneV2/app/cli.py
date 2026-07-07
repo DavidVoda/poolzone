@@ -4,6 +4,7 @@ import typer
 
 from app.db import session_scope
 from app.export.upgates_xml import run_export
+from app.job_run import job_run
 from app.models import Supplier
 from app.sync.pipeline import run_sync
 from app.sync.suppliers import pooltechnika
@@ -27,9 +28,10 @@ def sync(supplier_code: str) -> None:
         if supplier is None:
             typer.echo(f"Supplier '{supplier_code}' not in DB. Seed it first.")
             raise typer.Exit(code=1)
-        raw = adapter.fetch(supplier.feed_url)
-        parsed = adapter.parse(raw)
-        stats = run_sync(session, supplier, parsed)
+        with job_run(session, "sync") as job:
+            parsed = adapter.parse(adapter.fetch(supplier.feed_url))
+            job.stats = run_sync(session, supplier, parsed)
+            stats = job.stats
     typer.echo(f"Sync done: {stats}")
 
 

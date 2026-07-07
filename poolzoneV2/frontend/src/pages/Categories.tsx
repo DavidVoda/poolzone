@@ -17,8 +17,10 @@ import { TreeView } from "@/components/app/TreeView"
 import { Field } from "@/components/form/Field"
 import { FormSection } from "@/components/form/FormSection"
 import { client, unwrap, type Category } from "@/lib/api"
+import { useT } from "@/lib/i18n"
 
 export default function Categories() {
+  const { t } = useT()
   const queryClient = useQueryClient()
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
@@ -32,7 +34,7 @@ export default function Categories() {
 
   const create = useMutation({
     mutationFn: (parent_id: number | null) =>
-      unwrap(client.POST("/api/categories", { body: { name: "Nová kategorie", parent_id } })),
+      unwrap(client.POST("/api/categories", { body: { name: t("Nová kategorie"), parent_id } })),
     onSuccess: (c) => {
       invalidate()
       setSelectedId(c.id)
@@ -46,7 +48,7 @@ export default function Categories() {
     onSuccess: () => {
       invalidate()
       setSelectedId(null)
-      toast.success("Kategorie smazána")
+      toast.success(t("Kategorie smazána"))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -54,10 +56,10 @@ export default function Categories() {
   return (
     <>
       <PageHeader
-        title="Kategorie"
+        title={t("Kategorie")}
         actions={
           <Button size="sm" onClick={() => create.mutate(selectedId)}>
-            <Plus className="size-4" /> Přidat {selected ? `do „${selected.name}“` : "kořenovou"}
+            <Plus className="size-4" /> {t("Přidat")} {selected ? `${t("do")} „${selected.name}“` : t("kořenovou")}
           </Button>
         }
       />
@@ -74,13 +76,13 @@ export default function Categories() {
                 categories={categories ?? []}
                 onSaved={invalidate}
                 onDelete={() => {
-                  if (window.confirm(`Smazat kategorii „${selected.name}“?`)) remove.mutate(selected.id)
+                  if (window.confirm(`${t("Smazat kategorii")} „${selected.name}“?`)) remove.mutate(selected.id)
                 }}
               />
               <MappingsTable categoryId={selected.id} categories={categories ?? []} />
             </>
           ) : (
-            <p className="text-muted-foreground">Vyberte kategorii vlevo.</p>
+            <p className="text-muted-foreground">{t("Vyberte kategorii vlevo.")}</p>
           )}
         </div>
       </div>
@@ -99,6 +101,7 @@ function CategoryForm({
   onSaved: () => void
   onDelete: () => void
 }) {
+  const { t } = useT()
   const [form, setForm] = useState({
     name: category.name,
     parent_id: category.parent_id,
@@ -130,7 +133,7 @@ function CategoryForm({
         }),
       ),
     onSuccess: () => {
-      toast.success("Uloženo")
+      toast.success(t("Uloženo"))
       onSaved()
     },
     onError: (e: Error) => toast.error(e.message),
@@ -152,22 +155,22 @@ function CategoryForm({
 
   return (
     <FormSection
-      title={`Kategorie: ${category.name}`}
+      title={`${t("Kategorie")}: ${category.name}`}
       actions={
         <div className="flex gap-2">
           <Button variant="ghost" size="icon" onClick={onDelete}>
             <Trash2 className="size-4 text-red-500" />
           </Button>
           <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
-            Uložit
+            {t("Uložit")}
           </Button>
         </div>
       }
     >
-      <Field label="Název">
+      <Field label={t("Název")}>
         <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
       </Field>
-      <Field label="Nadřazená kategorie">
+      <Field label={t("Nadřazená kategorie")}>
         <Select
           value={form.parent_id === null ? "root" : String(form.parent_id)}
           onValueChange={(v) => setForm({ ...form, parent_id: v === "root" ? null : Number(v) })}
@@ -176,7 +179,7 @@ function CategoryForm({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="root">(kořen)</SelectItem>
+            <SelectItem value="root">{t("(kořen)")}</SelectItem>
             {parentOptions.map((c) => (
               <SelectItem key={c.id} value={String(c.id)}>
                 {c.name}
@@ -185,10 +188,10 @@ function CategoryForm({
           </SelectContent>
         </Select>
       </Field>
-      <Field label="SEO titulek">
+      <Field label={t("SEO titulek")}>
         <Input value={form.seo_title} onChange={(e) => setForm({ ...form, seo_title: e.target.value })} />
       </Field>
-      <Field label="SEO popis">
+      <Field label={t("SEO popis")}>
         <Textarea
           value={form.seo_description}
           onChange={(e) => setForm({ ...form, seo_description: e.target.value })}
@@ -199,6 +202,7 @@ function CategoryForm({
 }
 
 function MappingsTable({ categoryId, categories }: { categoryId: number; categories: Category[] }) {
+  const { t } = useT()
   const queryClient = useQueryClient()
   const { data: mappings } = useQuery({
     queryKey: ["mappings", categoryId],
@@ -215,15 +219,15 @@ function MappingsTable({ categoryId, categories }: { categoryId: number; categor
         }),
       ),
     onSuccess: () => {
-      toast.success("Mapování přesunuto")
+      toast.success(t("Mapování přesunuto"))
       queryClient.invalidateQueries({ queryKey: ["mappings"] })
     },
     onError: (e: Error) => toast.error(e.message),
   })
 
   return (
-    <FormSection title="Mapování dodavatelských kategorií">
-      {!mappings?.length && <p className="text-sm text-muted-foreground">Žádná mapování na tuto kategorii.</p>}
+    <FormSection title={t("Mapování dodavatelských kategorií")}>
+      {!mappings?.length && <p className="text-sm text-muted-foreground">{t("Žádná mapování na tuto kategorii.")}</p>}
       {mappings?.map((m) => (
         <div key={m.id} className="flex items-center gap-3 text-sm">
           <span className="min-w-0 flex-1 truncate font-mono text-xs">{m.supplier_path}</span>

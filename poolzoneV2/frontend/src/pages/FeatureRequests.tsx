@@ -19,13 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import { PageHeader } from "@/components/app/PageHeader"
 import { StatusBadge } from "@/components/app/StatusBadge"
 import { Field } from "@/components/form/Field"
 import { client, unwrap, type FeatureRequest } from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
+import { useT } from "@/lib/i18n"
 
 const PRIORITY_LABELS: Record<string, string> = { low: "nízká", normal: "normální", high: "vysoká" }
 // Statuses where the agent may be working / about to pick up — poll these.
@@ -34,6 +34,7 @@ type Sort = "updated" | "created" | "priority"
 const PRIORITY_RANK: Record<string, number> = { high: 0, normal: 1, low: 2 }
 
 export default function FeatureRequests() {
+  const { t } = useT()
   const queryClient = useQueryClient()
   const [detailId, setDetailId] = useState<number | null>(null)
   const [status, setStatus] = useState("all")
@@ -73,30 +74,30 @@ export default function FeatureRequests() {
 
   return (
     <>
-      <PageHeader title="Požadavky" actions={<NewRequestDialog onCreated={invalidate} />} />
+      <PageHeader title={t("Požadavky")} actions={<NewRequestDialog onCreated={invalidate} />} />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <FilterSelect value={status} onChange={setStatus} placeholder="Stav" options={STATUS_OPTS} />
+        <FilterSelect value={status} onChange={setStatus} placeholder={t("Stav")} options={STATUS_OPTS.map(([v, l]) => [v, t(l)])} />
         <FilterSelect
           value={priority}
           onChange={setPriority}
-          placeholder="Priorita"
-          options={Object.entries(PRIORITY_LABELS).map(([v, l]) => [v, l])}
+          placeholder={t("Priorita")}
+          options={Object.entries(PRIORITY_LABELS).map(([v, l]) => [v, t(l)])}
         />
         <FilterSelect
           value={tag}
           onChange={setTag}
-          placeholder="Oblast"
-          options={tags.map((t) => [t, t])}
+          placeholder={t("Oblast")}
+          options={tags.map((tg) => [tg, tg])}
         />
         <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
           <SelectTrigger className="ml-auto w-44" size="sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="updated">Naposledy upraveno</SelectItem>
-            <SelectItem value="created">Nejnovější</SelectItem>
-            <SelectItem value="priority">Priorita</SelectItem>
+            <SelectItem value="updated">{t("Naposledy upraveno")}</SelectItem>
+            <SelectItem value="created">{t("Nejnovější")}</SelectItem>
+            <SelectItem value="priority">{t("Priorita")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -115,19 +116,19 @@ export default function FeatureRequests() {
             <h3 className="font-medium leading-snug">{r.title}</h3>
             <p className="line-clamp-2 text-sm text-muted-foreground">{r.description}</p>
             <div className="mt-auto flex flex-wrap gap-1 pt-1 text-[11px]">
-              <span className="rounded-full bg-muted px-2 py-0.5">{PRIORITY_LABELS[r.priority] ?? r.priority}</span>
+              <span className="rounded-full bg-muted px-2 py-0.5">{t(PRIORITY_LABELS[r.priority] ?? r.priority)}</span>
               {r.tag && <span className="rounded-full bg-muted px-2 py-0.5">{r.tag}</span>}
             </div>
           </button>
         ))}
-        {shown.length === 0 && <p className="text-muted-foreground">Žádné požadavky.</p>}
+        {shown.length === 0 && <p className="text-muted-foreground">{t("Žádné požadavky.")}</p>}
       </div>
 
-      <Sheet open={!!detail} onOpenChange={(o) => !o && setDetailId(null)}>
-        <SheetContent className="w-[560px] overflow-y-auto sm:max-w-[560px]">
+      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetailId(null)}>
+        <DialogContent className="max-h-[88vh] w-[92vw] overflow-y-auto sm:max-w-4xl">
           {detail && <Detail req={detail} onChanged={invalidate} />}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
@@ -153,13 +154,16 @@ function FilterSelect({
   placeholder: string
   options: [string, string][]
 }) {
+  const { t } = useT()
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="w-40" size="sm">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="all">{placeholder}: vše</SelectItem>
+        <SelectItem value="all">
+          {placeholder}: {t("vše")}
+        </SelectItem>
         {options.map(([v, l]) => (
           <SelectItem key={v} value={v}>
             {l}
@@ -171,6 +175,7 @@ function FilterSelect({
 }
 
 function NewRequestDialog({ onCreated }: { onCreated: () => void }) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -185,7 +190,7 @@ function NewRequestDialog({ onCreated }: { onCreated: () => void }) {
         }),
       ),
     onSuccess: () => {
-      toast.success("Požadavek vytvořen")
+      toast.success(t("Požadavek vytvořen"))
       setOpen(false)
       setTitle("")
       setDescription("")
@@ -200,27 +205,27 @@ function NewRequestDialog({ onCreated }: { onCreated: () => void }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm">
-          <Plus className="size-4" /> Nový požadavek
+          <Plus className="size-4" /> {t("Nový požadavek")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nový požadavek</DialogTitle>
+          <DialogTitle>{t("Nový požadavek")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <Field label="Název">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Krátký titulek" />
+          <Field label={t("Název")}>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("Krátký titulek")} />
           </Field>
-          <Field label="Popis (user story)">
+          <Field label={t("Popis (user story)")}>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={6}
-              placeholder="Jako operátor chci…"
+              placeholder={t("Jako operátor chci…")}
             />
           </Field>
           <div className="flex gap-3">
-            <Field label="Priorita">
+            <Field label={t("Priorita")}>
               <Select value={priority} onValueChange={setPriority}>
                 <SelectTrigger className="w-36">
                   <SelectValue />
@@ -228,20 +233,20 @@ function NewRequestDialog({ onCreated }: { onCreated: () => void }) {
                 <SelectContent>
                   {Object.entries(PRIORITY_LABELS).map(([v, l]) => (
                     <SelectItem key={v} value={v}>
-                      {l}
+                      {t(l)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Oblast (tag)">
-              <Input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="ceny, produkty…" />
+            <Field label={t("Oblast (tag)")}>
+              <Input value={tag} onChange={(e) => setTag(e.target.value)} placeholder={t("ceny, produkty…")} />
             </Field>
           </div>
         </div>
         <DialogFooter>
           <Button onClick={() => create.mutate()} disabled={!title || !description || create.isPending}>
-            Vytvořit
+            {t("Vytvořit")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -250,6 +255,7 @@ function NewRequestDialog({ onCreated }: { onCreated: () => void }) {
 }
 
 function Detail({ req, onChanged }: { req: FeatureRequest; onChanged: () => void }) {
+  const { t } = useT()
   const [plan, setPlan] = useState(req.plan ?? "")
   const [note, setNote] = useState("")
 
@@ -274,7 +280,7 @@ function Detail({ req, onChanged }: { req: FeatureRequest; onChanged: () => void
         }),
       ),
     onSuccess: () => {
-      toast.success("Plán uložen")
+      toast.success(t("Plán uložen"))
       onChanged()
     },
     onError: (e: Error) => toast.error(e.message),
@@ -282,14 +288,14 @@ function Detail({ req, onChanged }: { req: FeatureRequest; onChanged: () => void
 
   return (
     <>
-      <SheetHeader>
-        <SheetTitle className="flex items-center gap-2">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
           #{req.id} {req.title} <StatusBadge status={req.status} />
-        </SheetTitle>
-      </SheetHeader>
-      <div className="space-y-4 px-4 pb-8">
+        </DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4 pb-2">
         <section>
-          <h4 className="mb-1 text-sm font-medium">Popis</h4>
+          <h4 className="mb-1 text-sm font-medium">{t("Popis")}</h4>
           <p className="whitespace-pre-wrap text-sm text-muted-foreground">{req.description}</p>
         </section>
 
@@ -299,14 +305,14 @@ function Detail({ req, onChanged }: { req: FeatureRequest; onChanged: () => void
 
         {req.status === "planned" ? (
           <section>
-            <h4 className="mb-1 text-sm font-medium">Plán (upravitelný)</h4>
+            <h4 className="mb-1 text-sm font-medium">{t("Plán (upravitelný)")}</h4>
             <Textarea value={plan} onChange={(e) => setPlan(e.target.value)} rows={14} className="font-mono text-xs" />
             <div className="mt-2 flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={() => savePlan.mutate()} disabled={savePlan.isPending}>
-                Uložit plán
+                {t("Uložit plán")}
               </Button>
               <Button size="sm" onClick={() => move.mutate({ to: "ready_for_impl" })} disabled={move.isPending}>
-                Připravit k realizaci
+                {t("Připravit k realizaci")}
               </Button>
             </div>
             <div className="mt-3 space-y-1">
@@ -314,7 +320,7 @@ function Detail({ req, onChanged }: { req: FeatureRequest; onChanged: () => void
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
-                placeholder="Poznámka pro přeplánování (agent ji uvidí)"
+                placeholder={t("Poznámka pro přeplánování (agent ji uvidí)")}
               />
               <Button
                 size="sm"
@@ -322,13 +328,13 @@ function Detail({ req, onChanged }: { req: FeatureRequest; onChanged: () => void
                 onClick={() => move.mutate({ to: "draft", review_note: note || undefined })}
                 disabled={move.isPending}
               >
-                Zpět na koncept
+                {t("Zpět na koncept")}
               </Button>
             </div>
           </section>
         ) : req.plan ? (
           <section>
-            <h4 className="mb-1 text-sm font-medium">Plán</h4>
+            <h4 className="mb-1 text-sm font-medium">{t("Plán")}</h4>
             <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">{req.plan}</pre>
           </section>
         ) : null}
@@ -336,31 +342,31 @@ function Detail({ req, onChanged }: { req: FeatureRequest; onChanged: () => void
         {/* Operator-driven gates (agent picks up the ready_* states out of band) */}
         {req.status === "draft" && (
           <Button size="sm" onClick={() => move.mutate({ to: "ready_for_plan" })} disabled={move.isPending}>
-            Připravit k plánu
+            {t("Připravit k plánu")}
           </Button>
         )}
         {req.status === "ready_for_plan" && (
-          <p className="text-sm text-muted-foreground">Čeká na agenta (plán). Spusť „feature-runner“.</p>
+          <p className="text-sm text-muted-foreground">{t("Čeká na agenta (plán). Spusť „feature-runner“.")}</p>
         )}
-        {req.status === "planning" && <p className="text-sm text-muted-foreground">Agent plánuje…</p>}
+        {req.status === "planning" && <p className="text-sm text-muted-foreground">{t("Agent plánuje…")}</p>}
         {req.status === "ready_for_impl" && (
-          <p className="text-sm text-muted-foreground">Čeká na agenta (realizace). Spusť „feature-runner“.</p>
+          <p className="text-sm text-muted-foreground">{t("Čeká na agenta (realizace). Spusť „feature-runner“.")}</p>
         )}
-        {req.status === "implementing" && <p className="text-sm text-muted-foreground">Agent realizuje…</p>}
+        {req.status === "implementing" && <p className="text-sm text-muted-foreground">{t("Agent realizuje…")}</p>}
         {req.status === "implemented" && (
           <div className="space-y-2">
             <p className="rounded-md bg-amber-50 p-2 text-sm text-amber-800">
-              Změny jsou v pracovním stromu (bez commitu) — zkontroluj a commitni ručně.
+              {t("Změny jsou v pracovním stromu (bez commitu) — zkontroluj a commitni ručně.")}
             </p>
             <Button size="sm" variant="outline" onClick={() => move.mutate({ to: "draft" })} disabled={move.isPending}>
-              Znovu od začátku
+              {t("Znovu od začátku")}
             </Button>
           </div>
         )}
 
         {req.execution_log && (
           <section>
-            <h4 className="mb-1 text-sm font-medium">Průběh realizace</h4>
+            <h4 className="mb-1 text-sm font-medium">{t("Průběh realizace")}</h4>
             <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">
               {req.execution_log}
             </pre>

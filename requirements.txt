@@ -2,3 +2,5 @@ requests
 unidecode
 pandas
 openpyxl
+anthropic
+pypdf

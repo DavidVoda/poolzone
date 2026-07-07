@@ -12,9 +12,11 @@ import { ProductPeekPanel } from "@/components/app/ProductPeekPanel"
 import { client, unwrap, type Product } from "@/lib/api"
 import { filterToParam, type FilterableColumn } from "@/lib/filters"
 import { formatKc, formatPct } from "@/lib/format"
+import { useT } from "@/lib/i18n"
 import { useTableParams } from "@/lib/use-table-params"
 
 export default function Products() {
+  const { t } = useT()
   const { filters, q, sort, page, peek, setFilters, setQ, setSort, setPage, setPeek } = useTableParams()
   const [selection, setSelection] = useState<RowSelectionState>({})
   const queryClient = useQueryClient()
@@ -56,7 +58,7 @@ export default function Products() {
         ),
       ),
     onSuccess: (_, active) => {
-      toast.success(active ? "Produkty aktivovány" : "Produkty deaktivovány")
+      toast.success(active ? t("Produkty aktivovány") : t("Produkty deaktivovány"))
       setSelection({})
       queryClient.invalidateQueries({ queryKey: ["products"] })
     },
@@ -65,26 +67,26 @@ export default function Products() {
 
   const filterable: FilterableColumn[] = useMemo(
     () => [
-      { id: "code", label: "Kód", type: "text" },
-      { id: "title", label: "Název", type: "text" },
+      { id: "code", label: t("Kód"), type: "text" },
+      { id: "title", label: t("Název"), type: "text" },
       { id: "ean", label: "EAN", type: "text" },
-      { id: "manufacturer", label: "Výrobce", type: "text" },
+      { id: "manufacturer", label: t("Výrobce"), type: "text" },
       {
         id: "supplier_id",
-        label: "Dodavatel",
+        label: t("Dodavatel"),
         type: "select",
         options: (suppliers ?? []).map((s) => ({ value: String(s.id), label: s.name })),
       },
-      { id: "stock", label: "Sklad", type: "number" },
-      { id: "availability", label: "Dostupnost", type: "text" },
-      { id: "active", label: "Aktivní", type: "bool" },
-      { id: "price_purchase", label: "Nákupní cena", type: "number" },
-      { id: "coefficient", label: "Koeficient", type: "number" },
-      { id: "margin_pct", label: "Marže", type: "number" },
-      { id: "long_description", label: "Dlouhý popis", type: "text" },
-      { id: "seo_title", label: "SEO titulek", type: "text" },
+      { id: "stock", label: t("Sklad"), type: "number" },
+      { id: "availability", label: t("Dostupnost"), type: "text" },
+      { id: "active", label: t("Aktivní"), type: "bool" },
+      { id: "price_purchase", label: t("Nákupní cena"), type: "number" },
+      { id: "coefficient", label: t("Koeficient"), type: "number" },
+      { id: "margin_pct", label: t("Marže"), type: "number" },
+      { id: "long_description", label: t("Dlouhý popis"), type: "text" },
+      { id: "seo_title", label: t("SEO titulek"), type: "text" },
     ],
-    [suppliers],
+    [suppliers, t],
   )
 
   const columns: ColumnDef<Product, unknown>[] = useMemo(
@@ -102,51 +104,51 @@ export default function Products() {
           />
         ),
       },
-      { accessorKey: "code", id: "code", header: "Kód", meta: { label: "Kód" }, enableHiding: false },
-      { accessorKey: "title", id: "title", header: "Název", meta: { label: "Název" }, enableHiding: false },
+      { accessorKey: "code", id: "code", header: t("Kód"), meta: { label: t("Kód") }, enableHiding: false },
+      { accessorKey: "title", id: "title", header: t("Název"), meta: { label: t("Název") }, enableHiding: false },
       {
         id: "supplier_id",
-        header: "Dodavatel",
-        meta: { label: "Dodavatel" },
+        header: t("Dodavatel"),
+        meta: { label: t("Dodavatel") },
         cell: ({ row }) => supplierName(row.original.supplier_id),
       },
-      { accessorKey: "manufacturer", id: "manufacturer", header: "Výrobce", meta: { label: "Výrobce" } },
+      { accessorKey: "manufacturer", id: "manufacturer", header: t("Výrobce"), meta: { label: t("Výrobce") } },
       { accessorKey: "ean", id: "ean", header: "EAN", meta: { label: "EAN" } },
-      { accessorKey: "stock", id: "stock", header: "Sklad", meta: { label: "Sklad" } },
-      { accessorKey: "availability", id: "availability", header: "Dostupnost", meta: { label: "Dostupnost" } },
+      { accessorKey: "stock", id: "stock", header: t("Sklad"), meta: { label: t("Sklad") } },
+      { accessorKey: "availability", id: "availability", header: t("Dostupnost"), meta: { label: t("Dostupnost") } },
       {
         id: "price_purchase",
-        header: "Nákup",
-        meta: { label: "Nákupní cena" },
+        header: t("Nákup"),
+        meta: { label: t("Nákupní cena") },
         cell: ({ row }) => formatKc(row.original.price_purchase),
       },
       {
         accessorKey: "coefficient",
         id: "coefficient",
-        header: "Koef.",
-        meta: { label: "Koeficient" },
+        header: t("Koef."),
+        meta: { label: t("Koeficient") },
       },
       {
         id: "margin_pct",
-        header: "Marže",
-        meta: { label: "Marže" },
+        header: t("Marže"),
+        meta: { label: t("Marže") },
         cell: ({ row }) => formatPct(row.original.margin_pct),
       },
       {
         id: "sale_price",
         enableSorting: false,
-        header: "Prodej",
-        meta: { label: "Prodejní cena" },
+        header: t("Prodej"),
+        meta: { label: t("Prodejní cena") },
         cell: ({ row }) => <span className="font-medium">{formatKc(row.original.sale_price)}</span>,
       },
       {
         id: "active",
-        header: "Stav",
-        meta: { label: "Stav" },
+        header: t("Stav"),
+        meta: { label: t("Stav") },
         cell: ({ row }) => <StatusBadge status={row.original.active ? "active" : "inactive"} />,
       },
     ],
-    [suppliers],
+    [suppliers, t],
   )
 
   const selectedCount = Object.keys(selection).length
@@ -154,16 +156,18 @@ export default function Products() {
   return (
     <>
       <PageHeader
-        title="Produkty"
+        title={t("Produkty")}
         actions={
           selectedCount > 0 && (
             <>
-              <span className="text-sm text-muted-foreground">{selectedCount} vybráno</span>
+              <span className="text-sm text-muted-foreground">
+                {selectedCount} {t("vybráno")}
+              </span>
               <Button size="sm" variant="outline" onClick={() => bulkActive.mutate(true)}>
-                Aktivovat
+                {t("Aktivovat")}
               </Button>
               <Button size="sm" variant="outline" onClick={() => bulkActive.mutate(false)}>
-                Deaktivovat
+                {t("Deaktivovat")}
               </Button>
             </>
           )

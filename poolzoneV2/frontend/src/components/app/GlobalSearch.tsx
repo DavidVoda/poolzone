@@ -11,8 +11,10 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { client, unwrap } from "@/lib/api"
+import { useT } from "@/lib/i18n"
 
 export function GlobalSearch() {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState("")
   const navigate = useNavigate()
@@ -40,13 +42,13 @@ export function GlobalSearch() {
         onClick={() => setOpen(true)}
         className="flex w-72 items-center gap-2 rounded-md bg-muted px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
       >
-        <Search className="size-4" /> Hledat kód / název / EAN… <kbd className="ml-auto text-xs">⌘K</kbd>
+        <Search className="size-4" /> {t("Hledat kód / název / EAN…")} <kbd className="ml-auto text-xs">⌘K</kbd>
       </button>
-      <CommandDialog open={open} onOpenChange={setOpen}>
+      <CommandDialog open={open} onOpenChange={setOpen} className="sm:max-w-2xl">
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Kód, název nebo EAN…" value={q} onValueChange={setQ} />
+          <CommandInput placeholder={t("Kód, název nebo EAN…")} value={q} onValueChange={setQ} />
           <CommandList>
-            <CommandEmpty>Nic nenalezeno.</CommandEmpty>
+            <CommandEmpty>{t("Nic nenalezeno.")}</CommandEmpty>
             {data?.items.map((p) => (
               <CommandItem
                 key={p.id}
@@ -56,7 +58,13 @@ export function GlobalSearch() {
                   navigate(`/products/${p.id}`)
                 }}
               >
-                <span className="font-mono text-xs text-muted-foreground">{p.code}</span> {p.title}
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate">{p.title ?? p.code}</span>
+                  <span className="text-xs text-muted-foreground">
+                    <span className="font-mono">{p.code}</span>
+                    {p.ean ? ` · ${p.ean}` : ""}
+                  </span>
+                </div>
               </CommandItem>
             ))}
           </CommandList>

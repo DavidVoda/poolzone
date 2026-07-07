@@ -3,12 +3,12 @@ from __future__ import annotations
 import hashlib
 import xml.etree.ElementTree as ET
 from collections import defaultdict
-from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.job_run import job_run
 from app.models import Category, JobRun, Product, ProductCategory
 from app.pricing import load_margin_rules, resolve_margin
 
@@ -101,34 +101,31 @@ def render_products(session: Session, rules: dict) -> tuple[bytes, int]:
 
 
 def run_export(session: Session, out_dir) -> dict:
-    """Render products, skip if unchanged since last export, else write file + record JobRun."""
-    rules = load_margin_rules(session)
-    xml, count = render_products(session, rules)
-    digest = hashlib.sha256(xml).hexdigest()
+    """Render products, skip if unchanged since last export, else write file + record JobRun.
 
-    last = (
-        session.execute(
-            select(JobRun)
-            .where(JobRun.kind == "export", JobRun.status == "success")
-            .order_by(JobRun.id.desc())
+    Raises JobBusyError (via job_run) if another job is already running.
+    """
+    with job_run(session, "export") as job:
+        rules = load_margin_rules(session)
+        xml, count = render_products(session, rules)
+        digest = hashlib.sha256(xml).hexdigest()
+
+        last = (
+            session.execute(
+                select(JobRun)
+                .where(JobRun.kind == "export", JobRun.status == "success")
+                .order_by(JobRun.id.desc())
+            )
+            .scalars()
+            .first()
         )
-        .scalars()
-        .first()
-    )
-    if last and last.stats.get("hash") == digest:
-        return {"skipped": True, "hash": digest}
+        if last and last.stats.get("hash") == digest:
+            job.status = "skipped"
+            job.stats = {"hash": digest, "skipped": True}
+            return {"skipped": True, "hash": digest}
 
-    out_path = Path(out_dir) / PRODUCTS_FILE
-    out_path.write_bytes(xml)
+        out_path = Path(out_dir) / PRODUCTS_FILE
+        out_path.write_bytes(xml)
 
-    stats = {"products": count, "hash": digest, "path": str(out_path)}
-    session.add(
-        JobRun(
-            kind="export",
-            status="success",
-            finished_at=datetime.now(timezone.utc),
-            stats=stats,
-        )
-    )
-    session.flush()
-    return stats
+        job.stats = {"products": count, "hash": digest, "path": str(out_path)}
+        return job.stats

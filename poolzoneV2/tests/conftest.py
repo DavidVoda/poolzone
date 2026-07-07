@@ -27,7 +27,12 @@ def db_session(engine):
     """Each test runs in a transaction that is rolled back afterwards."""
     connection = engine.connect()
     trans = connection.begin()
-    session = sessionmaker(bind=connection, expire_on_commit=False)()
+    # join_transaction_mode: commits inside the test (e.g. job_run's up-front commit)
+    # release a SAVEPOINT instead of committing the outer transaction, so the final
+    # rollback still undoes everything and tests stay isolated.
+    session = sessionmaker(
+        bind=connection, expire_on_commit=False, join_transaction_mode="create_savepoint"
+    )()
     try:
         yield session
     finally:

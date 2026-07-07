@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { useT } from "@/lib/i18n"
 
 const STYLES: Record<string, string> = {
   success: "bg-green-100 text-green-700",
@@ -34,9 +35,10 @@ const LABELS: Record<string, string> = {
 }
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
+  const { t } = useT()
   return (
     <Badge variant="secondary" className={cn(STYLES[status] ?? "bg-slate-100 text-slate-600", className)}>
-      {LABELS[status] ?? status}
+      {t(LABELS[status] ?? status)}
     </Badge>
   )
 }

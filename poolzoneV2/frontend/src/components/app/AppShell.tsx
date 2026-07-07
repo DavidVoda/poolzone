@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom"
 import { BarChart3, Coins, DownloadCloud, FolderTree, Lightbulb, Package, Play, Sparkles, Workflow } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useT } from "@/lib/i18n"
 import { GlobalSearch } from "./GlobalSearch"
 import { JobStatusChip } from "./JobStatusChip"
 
@@ -17,6 +18,7 @@ const NAV = [
 ]
 
 export function AppShell() {
+  const { t, lang, setLang } = useT()
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-56 shrink-0 flex-col border-r bg-sidebar">
@@ -28,8 +30,8 @@ export function AppShell() {
                 key={to}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground/50"
               >
-                <Icon className="size-4" /> {label}
-                <span className="ml-auto rounded-full bg-muted px-2 text-[10px]">brzy</span>
+                <Icon className="size-4" /> {t(label)}
+                <span className="ml-auto rounded-full bg-muted px-2 text-[10px]">{t("brzy")}</span>
               </span>
             ) : (
               <NavLink
@@ -43,7 +45,7 @@ export function AppShell() {
                   )
                 }
               >
-                <Icon className="size-4" /> {label}
+                <Icon className="size-4" /> {t(label)}
               </NavLink>
             ),
           )}
@@ -53,6 +55,20 @@ export function AppShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-4 border-b px-6 py-2.5">
           <GlobalSearch />
+          <div className="ml-auto flex items-center rounded-md border text-xs">
+            {(["cs", "en"] as const).map((l) => (
+              <button
+                key={l}
+                onClick={() => setLang(l)}
+                className={cn(
+                  "px-2 py-1 font-medium uppercase first:rounded-l-md last:rounded-r-md",
+                  lang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
+                )}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
         </header>
         <main className="min-w-0 flex-1 px-6 py-5">
           <Outlet />

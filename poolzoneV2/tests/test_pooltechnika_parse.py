@@ -1,7 +1,16 @@
 from decimal import Decimal
 from pathlib import Path
 
-from app.sync.suppliers.pooltechnika import parse
+from app.sync.suppliers.pooltechnika import _stock, parse
+
+
+def test_stock_parses_decimal_and_junk():
+    # The live feed sends stock as a decimal string — must not raise, truncates to whole units.
+    assert _stock("4483.02") == 4483
+    assert _stock("7") == 7
+    assert _stock("1 234,5") is None  # space makes it non-numeric → skipped, never crashes
+    assert _stock("") is None
+    assert _stock(None) is None
 
 FIXTURE = (Path(__file__).parent / "fixtures" / "pooltechnika_sample.xml").read_bytes()
 

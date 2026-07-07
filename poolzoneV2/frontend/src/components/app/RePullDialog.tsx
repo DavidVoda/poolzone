@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { client, unwrap } from "@/lib/api"
+import { useT } from "@/lib/i18n"
 
 /** Feed fields the owner may re-apply. Limited to what ProductUpdate accepts;
  * stock/prices/ean/manufacturer flow through sync, not manual re-pull. */
@@ -40,6 +41,7 @@ type Applied = Partial<{
 }>
 
 export function RePullDialog({ productId, onApply }: { productId: number; onApply: (patch: Applied) => void }) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const [checked, setChecked] = useState<Record<string, boolean>>({})
 
@@ -63,7 +65,7 @@ export function RePullDialog({ productId, onApply }: { productId: number; onAppl
     if (checked.image_urls) patch.images = feed.image_urls.map((url, i) => ({ url, alt: null, ord: i }))
     onApply(patch)
     setOpen(false)
-    toast.info("Hodnoty přeneseny do formuláře — nezapomeňte uložit.")
+    toast.info(t("Hodnoty přeneseny do formuláře — nezapomeňte uložit."))
   }
 
   return (
@@ -81,9 +83,9 @@ export function RePullDialog({ productId, onApply }: { productId: number; onAppl
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Znovu načíst z dodavatele</DialogTitle>
+          <DialogTitle>{t("Znovu načíst z dodavatele")}</DialogTitle>
         </DialogHeader>
-        {pull.isPending && <p className="text-sm text-muted-foreground">Stahuji feed…</p>}
+        {pull.isPending && <p className="text-sm text-muted-foreground">{t("Stahuji feed…")}</p>}
         {feed && (
           <div className="space-y-2">
             {APPLICABLE.map(({ key, label }) => (
@@ -93,24 +95,24 @@ export function RePullDialog({ productId, onApply }: { productId: number; onAppl
                   onCheckedChange={(v) => setChecked((c) => ({ ...c, [key]: !!v }))}
                 />
                 <span>
-                  <b>{label}:</b>{" "}
+                  <b>{t(label)}:</b>{" "}
                   {key === "params"
-                    ? `${feed.params.length} parametrů`
+                    ? `${feed.params.length} ${t("parametrů")}`
                     : key === "image_urls"
-                      ? `${feed.image_urls.length} obrázků`
+                      ? `${feed.image_urls.length} ${t("obrázků")}`
                       : String(feed[key] ?? "—")}
                 </span>
               </label>
             ))}
             <p className="text-xs text-muted-foreground">
-              Sklad {feed.stock ?? "—"} · nákup {feed.price_purchase ?? "—"} Kč · {feed.availability ?? "—"} — tyto
-              hodnoty aktualizuje sync automaticky.
+              {t("Sklad")} {feed.stock ?? "—"} · {t("nákup")} {feed.price_purchase ?? "—"} Kč ·{" "}
+              {feed.availability ?? "—"} — {t("tyto hodnoty aktualizuje sync automaticky.")}
             </p>
           </div>
         )}
         <DialogFooter>
           <Button onClick={apply} disabled={!feed || !Object.values(checked).some(Boolean)}>
-            Přenést vybrané
+            {t("Přenést vybrané")}
           </Button>
         </DialogFooter>
       </DialogContent>

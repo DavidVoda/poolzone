@@ -8,11 +8,13 @@ import { FormSection } from "@/components/form/FormSection"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { client, unwrap, type Product } from "@/lib/api"
 import { formatKc, formatPct } from "@/lib/format"
+import { useT } from "@/lib/i18n"
 
 export default function Pricing() {
+  const { t } = useT()
   return (
     <>
-      <PageHeader title="Ceny" />
+      <PageHeader title={t("Ceny")} />
       <div className="space-y-5">
         <MarginDefaultsCard />
         <OverridesTable />
@@ -22,6 +24,7 @@ export default function Pricing() {
 }
 
 function MarginDefaultsCard() {
+  const { t } = useT()
   const queryClient = useQueryClient()
   const { data: rules } = useQuery({
     queryKey: ["pricing-rules-raw"],
@@ -33,7 +36,7 @@ function MarginDefaultsCard() {
     mutationFn: ({ id, margin_pct }: { id: number; margin_pct: string }) =>
       unwrap(client.PUT("/api/pricing/rules/{rule_id}", { params: { path: { rule_id: id } }, body: { margin_pct } })),
     onSuccess: () => {
-      toast.success("Marže uložena")
+      toast.success(t("Marže uložena"))
       setEdits({})
       queryClient.invalidateQueries({ queryKey: ["pricing-rules-raw"] })
       queryClient.invalidateQueries({ queryKey: ["pricing-rules"] })
@@ -42,10 +45,10 @@ function MarginDefaultsCard() {
   })
 
   return (
-    <FormSection title="Výchozí marže">
+    <FormSection title={t("Výchozí marže")}>
       {rules?.map((r) => (
         <div key={r.id} className="flex items-center gap-3 text-sm">
-          <span className="w-48">{r.scope === "default" ? "Globální výchozí" : `Prefix „${r.match_value}“`}</span>
+          <span className="w-48">{r.scope === "default" ? t("Globální výchozí") : `${t("Prefix")} „${r.match_value}“`}</span>
           <Input
             className="w-28"
             value={edits[r.id] ?? r.margin_pct}
@@ -54,7 +57,7 @@ function MarginDefaultsCard() {
           <span className="text-muted-foreground">{formatPct(edits[r.id] ?? r.margin_pct)}</span>
           {edits[r.id] !== undefined && edits[r.id] !== r.margin_pct && (
             <Button size="sm" onClick={() => save.mutate({ id: r.id, margin_pct: edits[r.id] })}>
-              Uložit
+              {t("Uložit")}
             </Button>
           )}
         </div>
@@ -64,6 +67,7 @@ function MarginDefaultsCard() {
 }
 
 function OverridesTable() {
+  const { t } = useT()
   const queryClient = useQueryClient()
   const { data } = useQuery({
     queryKey: ["products", "overrides"],
@@ -76,7 +80,7 @@ function OverridesTable() {
     mutationFn: ({ id, patch }: { id: number; patch: { coefficient?: string; margin_pct?: string | null } }) =>
       unwrap(client.PATCH("/api/products/{product_id}", { params: { path: { product_id: id } }, body: patch })),
     onSuccess: (_, { id }) => {
-      toast.success("Uloženo")
+      toast.success(t("Uloženo"))
       setEdits((e) => {
         const next = { ...e }
         delete next[id]
@@ -90,16 +94,16 @@ function OverridesTable() {
   const rows: Product[] = data?.items ?? []
 
   return (
-    <FormSection title={`Produkty s vlastní cenotvorbou (${data?.total ?? 0})`}>
+    <FormSection title={`${t("Produkty s vlastní cenotvorbou")} (${data?.total ?? 0})`}>
       <Table>
         <TableHeader>
           <TableRow className="bg-sky-50/60 hover:bg-sky-50/60">
-            <TableHead className="text-sky-800">Kód</TableHead>
-            <TableHead className="text-sky-800">Název</TableHead>
-            <TableHead className="text-sky-800">Nákup</TableHead>
-            <TableHead className="text-sky-800">Koeficient</TableHead>
-            <TableHead className="text-sky-800">Marže</TableHead>
-            <TableHead className="text-sky-800">Prodej</TableHead>
+            <TableHead className="text-sky-800">{t("Kód")}</TableHead>
+            <TableHead className="text-sky-800">{t("Název")}</TableHead>
+            <TableHead className="text-sky-800">{t("Nákup")}</TableHead>
+            <TableHead className="text-sky-800">{t("Koeficient")}</TableHead>
+            <TableHead className="text-sky-800">{t("Marže")}</TableHead>
+            <TableHead className="text-sky-800">{t("Prodej")}</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
@@ -123,7 +127,7 @@ function OverridesTable() {
                 <TableCell>
                   <Input
                     className="w-24"
-                    placeholder="výchozí"
+                    placeholder={t("výchozí")}
                     value={e?.margin_pct !== undefined ? (e.margin_pct ?? "") : (p.margin_pct ?? "")}
                     onChange={(ev) =>
                       setEdits((x) => ({
@@ -137,7 +141,7 @@ function OverridesTable() {
                 <TableCell>
                   {e && (
                     <Button size="sm" onClick={() => save.mutate({ id: p.id, patch: e })}>
-                      Uložit
+                      {t("Uložit")}
                     </Button>
                   )}
                 </TableCell>

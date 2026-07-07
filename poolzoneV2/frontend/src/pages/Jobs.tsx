@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Play } from "lucide-react"
 import { toast } from "sonner"
@@ -9,8 +9,14 @@ import { PageHeader } from "@/components/app/PageHeader"
 import { StatusBadge } from "@/components/app/StatusBadge"
 import { client, unwrap, type JobRun } from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
+import { useT } from "@/lib/i18n"
 
-const KIND_LABELS: Record<string, string> = { sync: "Sync", export: "Export" }
+const KIND_LABELS: Record<string, string> = {
+  sync: "Sync Pooltechnika",
+  export: "Export Upgates",
+  "import:products": "Import Upgates – produkty",
+  "import:categories": "Import Upgates – kategorie",
+}
 
 function duration(run: JobRun) {
   if (!run.started_at || !run.finished_at) return "—"
@@ -19,6 +25,7 @@ function duration(run: JobRun) {
 }
 
 export default function Jobs() {
+  const { t } = useT()
   const queryClient = useQueryClient()
   const [detail, setDetail] = useState<JobRun | null>(null)
 
@@ -27,6 +34,8 @@ export default function Jobs() {
     queryFn: () => unwrap(client.GET("/api/jobs", { params: { query: { limit: 50 } } })),
     refetchInterval: (q) => (q.state.data?.some((j) => j.status === "running") ? 5_000 : 60_000),
   })
+
+  const running = runs?.some((j) => j.status === "running") ?? false
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["jobs"] })
@@ -38,7 +47,7 @@ export default function Jobs() {
     mutationFn: () =>
       unwrap(client.POST("/api/jobs/sync/{supplier_code}", { params: { path: { supplier_code: "pooltechnika" } } })),
     onSuccess: () => {
-      toast.success("Sync dokončen")
+      toast.success(t("Sync dokončen"))
       invalidate()
     },
     onError: (e: Error) => {
@@ -50,7 +59,7 @@ export default function Jobs() {
   const exportJob = useMutation({
     mutationFn: () => unwrap(client.POST("/api/jobs/export")),
     onSuccess: () => {
-      toast.success("Export dokončen")
+      toast.success(t("Export dokončen"))
       invalidate()
     },
     onError: (e: Error) => {
@@ -59,36 +68,56 @@ export default function Jobs() {
     },
   })
 
+  // A trigger POST blocks until the (synchronous) job finishes; poll the list
+  // meanwhile so the up-front-committed "running" row actually shows up.
+  const triggering = sync.isPending || exportJob.isPending
+  useEffect(() => {
+    if (!triggering) return
+    const id = setInterval(() => queryClient.invalidateQueries({ queryKey: ["jobs"] }), 1500)
+    return () => clearInterval(id)
+  }, [triggering, queryClient])
+
   return (
     <>
       <PageHeader
-        title="Úlohy"
+        title={t("Úlohy")}
         actions={
           <>
-            <Button size="sm" onClick={() => sync.mutate()} disabled={sync.isPending}>
-              <Play className="size-4" /> {sync.isPending ? "Sync běží…" : "Sync teď"}
+            <Button size="sm" onClick={() => sync.mutate()} disabled={sync.isPending || running}>
+              <Play className="size-4" /> {sync.isPending ? t("Sync běží…") : t("Sync teď")}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => exportJob.mutate()} disabled={exportJob.isPending}>
-              <Play className="size-4" /> {exportJob.isPending ? "Export běží…" : "Export teď"}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => exportJob.mutate()}
+              disabled={exportJob.isPending || running}
+            >
+              <Play className="size-4" /> {exportJob.isPending ? t("Export běží…") : t("Export teď")}
             </Button>
           </>
         }
       />
+      {(running || triggering) && (
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-800">
+          <span className="size-2 animate-pulse rounded-full bg-sky-500" />
+          {t("Úloha běží — počkejte na dokončení.")}
+        </div>
+      )}
       <div className="rounded-lg border bg-card shadow-sm">
         <Table>
           <TableHeader>
             <TableRow className="bg-sky-50/60 hover:bg-sky-50/60">
-              <TableHead className="text-sky-800">Úloha</TableHead>
-              <TableHead className="text-sky-800">Stav</TableHead>
-              <TableHead className="text-sky-800">Spuštěno</TableHead>
-              <TableHead className="text-sky-800">Trvání</TableHead>
-              <TableHead className="text-sky-800">Statistiky</TableHead>
+              <TableHead className="text-sky-800">{t("Úloha")}</TableHead>
+              <TableHead className="text-sky-800">{t("Stav")}</TableHead>
+              <TableHead className="text-sky-800">{t("Spuštěno")}</TableHead>
+              <TableHead className="text-sky-800">{t("Trvání")}</TableHead>
+              <TableHead className="text-sky-800">{t("Statistiky")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {runs?.map((run) => (
               <TableRow key={run.id} className="cursor-pointer" onClick={() => setDetail(run)}>
-                <TableCell>{KIND_LABELS[run.kind] ?? run.kind}</TableCell>
+                <TableCell>{t(KIND_LABELS[run.kind] ?? run.kind)}</TableCell>
                 <TableCell>
                   <StatusBadge status={run.status} />
                 </TableCell>
@@ -112,7 +141,7 @@ export default function Jobs() {
             <>
               <SheetHeader>
                 <SheetTitle>
-                  {KIND_LABELS[detail.kind] ?? detail.kind} #{detail.id} <StatusBadge status={detail.status} />
+                  {t(KIND_LABELS[detail.kind] ?? detail.kind)} #{detail.id} <StatusBadge status={detail.status} />
                 </SheetTitle>
               </SheetHeader>
               <div className="space-y-4 px-4 pb-6">
@@ -121,7 +150,7 @@ export default function Jobs() {
                 )}
                 {Array.isArray(detail.stats.errors) && detail.stats.errors.length > 0 && (
                   <div>
-                    <h4 className="mb-1 text-sm font-medium">Chyby po produktech</h4>
+                    <h4 className="mb-1 text-sm font-medium">{t("Chyby po produktech")}</h4>
                     <ul className="space-y-1 text-xs text-red-700">
                       {(detail.stats.errors as unknown[]).map((e, i) => (
                         <li key={i} className="rounded bg-red-50 p-1.5">
@@ -132,7 +161,7 @@ export default function Jobs() {
                   </div>
                 )}
                 <div>
-                  <h4 className="mb-1 text-sm font-medium">Statistiky</h4>
+                  <h4 className="mb-1 text-sm font-medium">{t("Statistiky")}</h4>
                   <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">
                     {JSON.stringify(detail.stats, null, 2)}
                   </pre>

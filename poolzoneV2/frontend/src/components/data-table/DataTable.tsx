@@ -10,6 +10,7 @@ import { ArrowDown, ArrowUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLocalStorage } from "@/lib/use-local-storage"
+import { useT } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 import { ColumnMenu } from "./ColumnMenu"
 
@@ -51,6 +52,7 @@ export function DataTable<T>({
   stickyCount = 0,
   rowClassName,
 }: Props<T>) {
+  const { t } = useT()
   const [visibility, setVisibility] = useLocalStorage<VisibilityState>(storageKey, {})
 
   const table = useReactTable({
@@ -109,13 +111,13 @@ export function DataTable<T>({
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                  Načítám…
+                  {t("Načítám…")}
                 </TableCell>
               </TableRow>
             ) : data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                  Žádné výsledky.
+                  {t("Žádné výsledky.")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -140,11 +142,11 @@ export function DataTable<T>({
       <div className="flex items-center justify-between border-t px-3 py-2 text-sm text-muted-foreground">
         <div className="flex items-center gap-3">
           <ColumnMenu table={table} />
-          <span>{total.toLocaleString("cs-CZ")} položek</span>
+          <span>{total.toLocaleString("cs-CZ")} {t("položek")}</span>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" disabled={page === 0} onClick={() => onPageChange(page - 1)}>
-            Předchozí
+            {t("Předchozí")}
           </Button>
           <span>
             {page + 1} / {pages}
@@ -155,7 +157,7 @@ export function DataTable<T>({
             disabled={page + 1 >= pages}
             onClick={() => onPageChange(page + 1)}
           >
-            Další
+            {t("Další")}
           </Button>
         </div>
       </div>

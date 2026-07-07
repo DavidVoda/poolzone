@@ -25,3 +25,10 @@ dist-ssr
 
 # Frontend source lib (root .gitignore lib/ rule otherwise swallows it)
 !/src/lib/
+
+# design-sync scratch
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

@@ -17,6 +17,7 @@ import {
   type FilterableColumn,
   type FilterOp,
 } from "@/lib/filters"
+import { useT } from "@/lib/i18n"
 
 type Props = {
   columns: FilterableColumn[]
@@ -29,18 +30,19 @@ type Props = {
 
 const NEEDS_VALUE = (op: FilterOp) => op !== "empty" && op !== "notempty"
 
-function chipLabel(f: Filter, columns: FilterableColumn[]) {
+function chipLabel(f: Filter, columns: FilterableColumn[], t: (cs: string) => string) {
   const col = columns.find((c) => c.id === f.col)
   const value =
     col?.type === "select"
       ? (col.options?.find((o) => o.value === f.value)?.label ?? f.value)
       : col?.type === "bool"
-        ? (f.value === "true" ? "ano" : "ne")
+        ? (f.value === "true" ? t("ano") : t("ne"))
         : f.value
   return `${col?.label ?? f.col} ${OP_LABELS[f.op]} ${NEEDS_VALUE(f.op) ? value : ""}`.trim()
 }
 
 export function FilterBar({ columns, filters, onChange, q, onQChange, children }: Props) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<Partial<Filter>>({})
   const draftCol = columns.find((c) => c.id === draft.col)
@@ -61,7 +63,7 @@ export function FilterBar({ columns, filters, onChange, q, onQChange, children }
         <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
         <Input
           className="w-64 pl-8"
-          placeholder="Hledat kód / název / EAN…"
+          placeholder={t("Hledat kód / název / EAN…")}
           defaultValue={q}
           onChange={(e) => {
             const v = e.target.value
@@ -77,20 +79,20 @@ export function FilterBar({ columns, filters, onChange, q, onQChange, children }
           onClick={() => onChange(filters.filter((_, j) => j !== i))}
           className="flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-sm text-accent-foreground hover:opacity-80"
         >
-          {chipLabel(f, columns)} <X className="size-3" />
+          {chipLabel(f, columns, t)} <X className="size-3" />
         </button>
       ))}
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="rounded-full border-dashed">
-            <Plus className="size-4" /> Filtr
+            <Plus className="size-4" /> {t("Filtr")}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-64 space-y-2" align="start">
           <Select value={draft.col ?? ""} onValueChange={(col) => setDraft({ col })}>
             <SelectTrigger>
-              <SelectValue placeholder="Sloupec" />
+              <SelectValue placeholder={t("Sloupec")} />
             </SelectTrigger>
             <SelectContent>
               {columns.map((c) => (
@@ -104,7 +106,7 @@ export function FilterBar({ columns, filters, onChange, q, onQChange, children }
           {draftCol && (
             <Select value={draft.op ?? ""} onValueChange={(op) => setDraft({ ...draft, op: op as FilterOp })}>
               <SelectTrigger>
-                <SelectValue placeholder="Podmínka" />
+                <SelectValue placeholder={t("Podmínka")} />
               </SelectTrigger>
               <SelectContent>
                 {OPS_BY_TYPE[draftCol.type].map((op) => (
@@ -119,7 +121,7 @@ export function FilterBar({ columns, filters, onChange, q, onQChange, children }
           {draft.op && NEEDS_VALUE(draft.op) && draftCol?.type === "select" && (
             <Select value={draft.value ?? ""} onValueChange={(value) => setDraft({ ...draft, value })}>
               <SelectTrigger>
-                <SelectValue placeholder="Hodnota" />
+                <SelectValue placeholder={t("Hodnota")} />
               </SelectTrigger>
               <SelectContent>
                 {draftCol.options?.map((o) => (
@@ -133,17 +135,17 @@ export function FilterBar({ columns, filters, onChange, q, onQChange, children }
           {draft.op && NEEDS_VALUE(draft.op) && draftCol?.type === "bool" && (
             <Select value={draft.value ?? ""} onValueChange={(value) => setDraft({ ...draft, value })}>
               <SelectTrigger>
-                <SelectValue placeholder="Hodnota" />
+                <SelectValue placeholder={t("Hodnota")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="true">ano</SelectItem>
-                <SelectItem value="false">ne</SelectItem>
+                <SelectItem value="true">{t("ano")}</SelectItem>
+                <SelectItem value="false">{t("ne")}</SelectItem>
               </SelectContent>
             </Select>
           )}
           {draft.op && NEEDS_VALUE(draft.op) && draftCol && draftCol.type !== "select" && draftCol.type !== "bool" && (
             <Input
-              placeholder="Hodnota"
+              placeholder={t("Hodnota")}
               value={draft.value ?? ""}
               onChange={(e) => setDraft({ ...draft, value: e.target.value })}
               onKeyDown={(e) => e.key === "Enter" && commit()}
@@ -151,7 +153,7 @@ export function FilterBar({ columns, filters, onChange, q, onQChange, children }
           )}
 
           <Button size="sm" className="w-full" onClick={commit}>
-            Přidat filtr
+            {t("Přidat filtr")}
           </Button>
         </PopoverContent>
       </Popover>

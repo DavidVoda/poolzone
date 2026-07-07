@@ -17,6 +17,7 @@ import { FormSection } from "@/components/form/FormSection"
 import { RichTextEditor } from "@/components/form/RichTextEditor"
 import { UnsavedChangesBar } from "@/components/form/UnsavedChangesBar"
 import { client, unwrap, type Category, type ProductDetail as ProductDetailT, type ProductUpdate } from "@/lib/api"
+import { useT } from "@/lib/i18n"
 
 type FormState = {
   title: string
@@ -51,6 +52,7 @@ const toForm = (p: ProductDetailT): FormState => ({
 })
 
 export default function ProductDetail() {
+  const { t } = useT()
   const { id } = useParams()
   const productId = Number(id)
   const queryClient = useQueryClient()
@@ -95,14 +97,14 @@ export default function ProductDetail() {
       )
     },
     onSuccess: () => {
-      toast.success("Uloženo")
+      toast.success(t("Uloženo"))
       queryClient.invalidateQueries({ queryKey: ["product", productId] })
       queryClient.invalidateQueries({ queryKey: ["products"] })
     },
     onError: (e: Error) => toast.error(e.message),
   })
 
-  if (!product || !form) return <p className="text-muted-foreground">Načítám…</p>
+  if (!product || !form) return <p className="text-muted-foreground">{t("Načítám…")}</p>
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => (f ? { ...f, [key]: value } : f))
@@ -113,18 +115,18 @@ export default function ProductDetail() {
         title={
           <span className="flex items-center gap-3">
             <span className="font-mono text-sm text-muted-foreground">{product.code}</span>
-            {form.title || "(bez názvu)"}
+            {form.title || t("(bez názvu)")}
             <StatusBadge status={form.active ? "active" : "inactive"} />
           </span>
         }
         actions={
           <>
             <label className="flex items-center gap-2 text-sm">
-              Aktivní <Switch checked={form.active} onCheckedChange={(v) => set("active", v)} />
+              {t("Aktivní")} <Switch checked={form.active} onCheckedChange={(v) => set("active", v)} />
             </label>
             <RePullDialog productId={productId} onApply={(patch) => setForm((f) => (f ? { ...f, ...patch } : f))} />
             <Button onClick={() => save.mutate(form)} disabled={!dirty || save.isPending}>
-              Uložit
+              {t("Uložit")}
             </Button>
           </>
         }
@@ -132,23 +134,23 @@ export default function ProductDetail() {
 
       <div className="flex items-start gap-5">
         <div className="min-w-0 flex-1 space-y-5">
-          <FormSection title="Obsah">
-            <Field label="Název">
+          <FormSection title={t("Obsah")}>
+            <Field label={t("Název")}>
               <Input value={form.title} onChange={(e) => set("title", e.target.value)} />
             </Field>
-            <Field label="Krátký popis">
+            <Field label={t("Krátký popis")}>
               <Textarea value={form.short_description} onChange={(e) => set("short_description", e.target.value)} />
             </Field>
-            <Field label="Dlouhý popis">
+            <Field label={t("Dlouhý popis")}>
               <RichTextEditor value={form.long_description} onChange={(v) => set("long_description", v)} />
             </Field>
           </FormSection>
 
           <FormSection title="SEO">
-            <Field label="SEO titulek">
+            <Field label={t("SEO titulek")}>
               <Input value={form.seo_title} onChange={(e) => set("seo_title", e.target.value)} />
             </Field>
-            <Field label="SEO popis">
+            <Field label={t("SEO popis")}>
               <Textarea value={form.seo_description} onChange={(e) => set("seo_description", e.target.value)} />
             </Field>
             <Field label="URL slug">
@@ -157,7 +159,7 @@ export default function ProductDetail() {
           </FormSection>
 
           <FormSection
-            title="Parametry"
+            title={t("Parametry")}
             actions={
               <Button
                 variant="outline"
@@ -166,7 +168,7 @@ export default function ProductDetail() {
                   set("params", [...form.params, { name: "", value: "", ord: form.params.length }])
                 }
               >
-                <Plus className="size-4" /> Přidat
+                <Plus className="size-4" /> {t("Přidat")}
               </Button>
             }
           >
@@ -174,14 +176,14 @@ export default function ProductDetail() {
               <div key={i} className="flex items-center gap-2">
                 <Input
                   className="w-48"
-                  placeholder="Název"
+                  placeholder={t("Název")}
                   value={p.name}
                   onChange={(e) =>
                     set("params", form.params.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
                   }
                 />
                 <Input
-                  placeholder="Hodnota"
+                  placeholder={t("Hodnota")}
                   value={p.value ?? ""}
                   onChange={(e) =>
                     set("params", form.params.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))
@@ -225,14 +227,14 @@ export default function ProductDetail() {
           </FormSection>
 
           <FormSection
-            title="Obrázky"
+            title={t("Obrázky")}
             actions={
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => set("images", [...form.images, { url: "", alt: "", ord: form.images.length }])}
               >
-                <Plus className="size-4" /> Přidat
+                <Plus className="size-4" /> {t("Přidat")}
               </Button>
             }
           >
@@ -272,7 +274,7 @@ export default function ProductDetail() {
             </div>
           </FormSection>
 
-          <FormSection title="Kategorie">
+          <FormSection title={t("Kategorie")}>
             <CategoryChecklist
               categories={categories ?? []}
               value={form.categories}
@@ -280,7 +282,7 @@ export default function ProductDetail() {
             />
           </FormSection>
 
-          <FormSection title="Poznámka">
+          <FormSection title={t("Poznámka")}>
             <Textarea value={form.note} onChange={(e) => set("note", e.target.value)} />
           </FormSection>
         </div>
@@ -315,6 +317,7 @@ function CategoryChecklist({
   value: { category_id: number; primary_yn: boolean }[]
   onChange: (v: { category_id: number; primary_yn: boolean }[]) => void
 }) {
+  const { t } = useT()
   const byParent = new Map<number | null, Category[]>()
   categories.forEach((c) => {
     const list = byParent.get(c.parent_id) ?? []
@@ -351,7 +354,7 @@ function CategoryChecklist({
                     onChange(value.map((x) => ({ ...x, primary_yn: x.category_id === c.id })))
                   }
                 />
-                hlavní
+                {t("hlavní")}
               </label>
             )}
           </div>

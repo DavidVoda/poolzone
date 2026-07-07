@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/app/StatusBadge"
 import { PricingCard } from "@/components/app/PricingCard"
 import { RePullDialog } from "@/components/app/RePullDialog"
 import { client, unwrap } from "@/lib/api"
+import { useT } from "@/lib/i18n"
 
 type Props = {
   productId: number
@@ -17,6 +18,7 @@ type Props = {
 }
 
 export function ProductPeekPanel({ productId, productIds, onNavigate, onClose }: Props) {
+  const { t } = useT()
   const queryClient = useQueryClient()
   const [pricing, setPricing] = useState<{ coefficient?: string; margin_pct?: string | null }>({})
 
@@ -49,7 +51,7 @@ export function ProductPeekPanel({ productId, productIds, onNavigate, onClose }:
         }),
       ),
     onSuccess: () => {
-      toast.success("Uloženo")
+      toast.success(t("Uloženo"))
       setPricing({})
       queryClient.invalidateQueries({ queryKey: ["products"] })
       queryClient.invalidateQueries({ queryKey: ["product", productId] })
@@ -66,12 +68,12 @@ export function ProductPeekPanel({ productId, productIds, onNavigate, onClose }:
       <div className="flex items-start justify-between gap-2">
         <div>
           <div className="font-mono text-xs text-muted-foreground">{product.code}</div>
-          <h2 className="text-lg font-semibold leading-tight">{product.title ?? "(bez názvu)"}</h2>
+          <h2 className="text-lg font-semibold leading-tight">{product.title ?? t("(bez názvu)")}</h2>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button asChild variant="outline" size="sm">
             <Link to={`/products/${product.id}`}>
-              <ExternalLink className="size-4" /> Celý detail
+              <ExternalLink className="size-4" /> {t("Celý detail")}
             </Link>
           </Button>
           <Button variant="ghost" size="icon" onClick={onClose}>
@@ -88,12 +90,12 @@ export function ProductPeekPanel({ productId, productIds, onNavigate, onClose }:
             {product.manufacturer && <span>· {product.manufacturer}</span>}
           </div>
           <div>
-            Sklad {product.stock ?? "—"} · {product.availability ?? "—"}
+            {t("Sklad")} {product.stock ?? "—"} · {product.availability ?? "—"}
           </div>
           <div className="flex items-center gap-2">
-            Popis {product.long_description ? <Check className="size-3 text-green-600" /> : <X className="size-3 text-red-500" />}
+            {t("Popis")} {product.long_description ? <Check className="size-3 text-green-600" /> : <X className="size-3 text-red-500" />}
             · SEO {product.seo_title ? <Check className="size-3 text-green-600" /> : <X className="size-3 text-red-500" />}
-            · Obrázky {product.images.length}
+            · {t("Obrázky")} {product.images.length}
           </div>
         </div>
       </div>
@@ -108,11 +110,11 @@ export function ProductPeekPanel({ productId, productIds, onNavigate, onClose }:
 
       <div className="mt-auto flex items-center gap-2">
         <Button onClick={() => save.mutate()} disabled={!dirty || save.isPending}>
-          Uložit
+          {t("Uložit")}
         </Button>
         <RePullDialog
           productId={productId}
-          onApply={() => toast.info("Otevřete celý detail pro aplikaci obsahu z feedu.")}
+          onApply={() => toast.info(t("Otevřete celý detail pro aplikaci obsahu z feedu."))}
         />
         <span className="text-xs text-muted-foreground">↑↓ · Esc</span>
       </div>

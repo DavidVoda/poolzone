@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 import requests
 
@@ -32,6 +32,16 @@ def _purchase_excl_vat(price_vat_text: str | None) -> Decimal | None:
     incl = Decimal(price_vat_text.replace(",", ".").strip())
     excl = incl / (Decimal("1") + VAT_RATE)
     return excl.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _stock(text: str | None) -> int | None:
+    """Feed sends stock as a decimal string (e.g. '4483.02'); truncate to whole units."""
+    if not text:
+        return None
+    try:
+        return int(Decimal(text.replace(",", ".").strip()))
+    except (InvalidOperation, ValueError):
+        return None
 
 
 def _weight_grams(item: ET.Element) -> int | None:
@@ -66,7 +76,6 @@ def parse(raw: bytes) -> list[ParsedProduct]:
         code = _text(item, "ITEM_ID")
         if not code:
             continue
-        stock_text = _text(item, "stock_quantity")
         img = _text(item, "IMGURL")
         products.append(
             ParsedProduct(
@@ -76,7 +85,7 @@ def parse(raw: bytes) -> list[ParsedProduct]:
                 ean=_text(item, "EAN"),
                 manufacturer=_text(item, "MANUFACTURER"),
                 price_purchase=_purchase_excl_vat(_text(item, "PRICE_VAT")),
-                stock=int(stock_text) if stock_text is not None else None,
+                stock=_stock(_text(item, "stock_quantity")),
                 weight=_weight_grams(item),
                 availability=_text(item, "DELIVERY_DATE"),
                 category_path=_text(item, "CATEGORYTEXT"),

@@ -102,6 +102,12 @@ class SupplierOut(BaseModel):
     id: int
     code: str
     name: str
+    feed_url: str | None = None
+    last_synced_at: datetime | None = None
+
+
+class SupplierUpdate(BaseModel):
+    feed_url: str | None = None
 
 
 class CategoryOut(BaseModel):

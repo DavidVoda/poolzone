@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import JobRun, Product, ProductImage, ProductParam, Supplier
+from app.models import Product, ProductImage, ProductParam, Supplier
 from app.sync.types import ParsedProduct
 
 # Fields copied verbatim onto a NEW product (create-full). Whitelist controls updates.
@@ -36,11 +36,11 @@ def _apply_update(product: Product, parsed: ParsedProduct, whitelist: list[str])
 
 
 def run_sync(session: Session, supplier: Supplier, parsed_products: list[ParsedProduct]) -> dict:
-    """Create-full for new products, update-whitelist for existing. Records a JobRun."""
-    job = JobRun(kind="sync", status="running", stats={})
-    session.add(job)
-    session.flush()
+    """Create-full for new products, update-whitelist for existing. Returns stats.
 
+    Pure upsert — the caller owns the JobRun (via job_run) so the 'running' row is visible
+    for the whole operation, including the fetch/parse that happens before this.
+    """
     stats = {"products_seen": 0, "created": 0, "updated": 0, "errors": []}
     whitelist = supplier.update_whitelist or ["stock", "price_purchase", "availability"]
 
@@ -65,8 +65,4 @@ def run_sync(session: Session, supplier: Supplier, parsed_products: list[ParsedP
 
     session.flush()
     supplier.last_synced_at = datetime.now(timezone.utc)
-    job.status = "success"
-    job.finished_at = datetime.now(timezone.utc)
-    job.stats = stats
-    session.flush()
     return stats

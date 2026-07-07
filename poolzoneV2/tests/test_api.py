@@ -195,7 +195,9 @@ def test_list_suppliers(client, seeded):
 
 def test_categories_crud_and_mappings(client, seeded, db_session):
     root = client.post("/api/categories", json={"name": "Technologie", "parent_id": None}).json()
-    child = client.post("/api/categories", json={"name": "Čerpadla", "parent_id": root["id"]}).json()
+    child = client.post(
+        "/api/categories", json={"name": "Čerpadla", "parent_id": root["id"]}
+    ).json()
     assert child["parent_id"] == root["id"]
 
     r = client.patch(f"/api/categories/{child['id']}", json={"seo_title": "Čerpadla | Poolzone"})
@@ -243,7 +245,9 @@ def test_ne_filter_keeps_null_rows(client, seeded, db_session):
     db_session.add(Product(code="BOSCH1", title="y", manufacturer="Bosch"))
     db_session.flush()
     # "not Bosch" must include the NULL-manufacturer row
-    codes = {p["code"] for p in client.get("/api/products?filter=manufacturer:ne:Bosch").json()["items"]}
+    codes = {
+        p["code"] for p in client.get("/api/products?filter=manufacturer:ne:Bosch").json()["items"]
+    }
     assert "NOMAN" in codes and "BOSCH1" not in codes
 
 
@@ -257,7 +261,12 @@ def test_update_product_dedups_categories(client, seeded, db_session):
     db_session.flush()
     r = client.patch(
         f"/api/products/{seeded.id}",
-        json={"categories": [{"category_id": cat.id, "primary_yn": True}, {"category_id": cat.id, "primary_yn": False}]},
+        json={
+            "categories": [
+                {"category_id": cat.id, "primary_yn": True},
+                {"category_id": cat.id, "primary_yn": False},
+            ]
+        },
     )
     assert r.status_code == 200
     assert r.json()["categories"] == [{"category_id": cat.id, "primary_yn": True}]
@@ -275,4 +284,35 @@ def test_category_cycle_rejected(client, seeded):
     root = client.post("/api/categories", json={"name": "R", "parent_id": None}).json()
     child = client.post("/api/categories", json={"name": "C", "parent_id": root["id"]}).json()
     # making root a child of its own child -> cycle -> 409
-    assert client.patch(f"/api/categories/{root['id']}", json={"parent_id": child["id"]}).status_code == 409
+    assert (
+        client.patch(f"/api/categories/{root['id']}", json={"parent_id": child["id"]}).status_code
+        == 409
+    )
+
+
+def test_spa_deep_link_serves_index(client):
+    # Client-side routes must fall back to index.html (deep link / refresh), not 404.
+    r = client.get("/feed-mapping")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+
+
+def test_unknown_api_path_still_404(client):
+    assert client.get("/api/does-not-exist").status_code == 404
+
+
+def test_export_blocked_while_job_running(client, db_session):
+    from app.models import JobRun
+
+    db_session.add(JobRun(kind="sync", status="running", stats={}))
+    db_session.flush()
+    assert client.post("/api/jobs/export").status_code == 409
+
+
+def test_feed_import_blocked_while_job_running(client, db_session):
+    from app.models import FeedConfig, JobRun
+
+    db_session.add(FeedConfig(kind="products", feed_url="http://x", update_whitelist=[]))
+    db_session.add(JobRun(kind="sync", status="running", stats={}))
+    db_session.flush()
+    assert client.post("/api/feeds/products/run").status_code == 409
