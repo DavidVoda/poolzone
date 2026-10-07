@@ -24,3 +24,5 @@ export type MarginRule = paths["/api/pricing/rules"]["get"]["responses"]["200"][
 export type JobRun = paths["/api/jobs"]["get"]["responses"]["200"]["content"]["application/json"][number]
 export type FeedConfig = paths["/api/feeds"]["get"]["responses"]["200"]["content"]["application/json"][number]
 export type FeatureRequest = paths["/api/feature-requests"]["get"]["responses"]["200"]["content"]["application/json"][number]
+export type User = paths["/api/users"]["get"]["responses"]["200"]["content"]["application/json"][number]
+export type Me = paths["/api/auth/me"]["get"]["responses"]["200"]["content"]["application/json"]

@@ -100,6 +100,7 @@ const EN: Record<string, string> = {
   "(bez názvu)": "(untitled)",
   "Uložit": "Save",
   "Obsah": "Content",
+  "Cena": "Price",
   "Krátký popis": "Short description",
   "SEO popis": "SEO description",
   "Parametry": "Parameters",

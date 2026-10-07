@@ -1,0 +1,26 @@
+{
+  "projectId": "9ee06232-5d40-4e64-bbdd-13992ad4d641",
+  "shape": "package",
+  "pkg": "frontend",
+  "globalName": "PoolzoneUI",
+  "srcDir": "src/components",
+  "tsconfig": "/Users/dubelin/Documents/Poolzone/Git/poolzone/poolzoneV2/frontend/tsconfig.dssync.json",
+  "cssEntry": "/Users/dubelin/Documents/Poolzone/Git/poolzone/poolzoneV2/frontend/dist/assets/index-B7ilkYVX.css",
+  "readmeHeader": ".design-sync/conventions.md",
+  "componentSrcMap": {
+    "Command": null,
+    "DialogFooter": null,
+    "DropdownMenuLabel": null,
+    "InputGroupAddon": null,
+    "InputGroupButton": null,
+    "InputGroupInput": null,
+    "InputGroupTextarea": null,
+    "SelectGroup": null,
+    "SheetFooter": null,
+    "SheetHeader": null,
+    "Switch": null,
+    "TableCaption": null,
+    "TableCell": null,
+    "TableHead": null
+  }
+}

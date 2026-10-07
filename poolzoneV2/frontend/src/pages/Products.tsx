@@ -8,7 +8,8 @@ import { PageHeader } from "@/components/app/PageHeader"
 import { StatusBadge } from "@/components/app/StatusBadge"
 import { DataTable, PAGE_SIZE } from "@/components/data-table/DataTable"
 import { FilterBar } from "@/components/data-table/FilterBar"
-import { ProductPeekPanel } from "@/components/app/ProductPeekPanel"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { ProductDetailForm } from "@/components/app/ProductDetailForm"
 import { client, unwrap, type Product } from "@/lib/api"
 import { filterToParam, type FilterableColumn } from "@/lib/filters"
 import { formatKc, formatPct } from "@/lib/format"
@@ -19,6 +20,7 @@ export default function Products() {
   const { t } = useT()
   const { filters, q, sort, page, peek, setFilters, setQ, setSort, setPage, setPeek } = useTableParams()
   const [selection, setSelection] = useState<RowSelectionState>({})
+  const [peekDirty, setPeekDirty] = useState(false)
   const queryClient = useQueryClient()
 
   const { data: suppliers } = useQuery({
@@ -191,14 +193,22 @@ export default function Products() {
         stickyCount={0}
         rowClassName={(p) => (String(p.id) === peek ? "bg-accent/40" : undefined)}
       />
-      {peek && (
-        <ProductPeekPanel
-          productId={Number(peek)}
-          productIds={(query.data?.items ?? []).map((p) => p.id)}
-          onNavigate={(id) => setPeek(String(id))}
-          onClose={() => setPeek(null)}
-        />
-      )}
+      <Dialog
+        open={!!peek}
+        onOpenChange={(open) => {
+          if (open) return
+          if (peekDirty && !window.confirm(t("Máte neuložené změny. Opustit stránku?"))) return
+          setPeekDirty(false)
+          setPeek(null)
+        }}
+      >
+        <DialogContent className="flex h-[85vh] max-h-[880px] w-[1060px] max-w-[92vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[92vw]">
+          <DialogTitle className="sr-only">{t("Produkty")}</DialogTitle>
+          {peek && (
+            <ProductDetailForm productId={Number(peek)} variant="modal" onDirtyChange={setPeekDirty} />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

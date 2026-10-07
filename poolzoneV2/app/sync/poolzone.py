@@ -155,38 +155,67 @@ _PRODUCT_SCALARS = (
 )
 
 
+def _desired_categories(spec: dict, cat_by_code: dict[str, int]) -> list[dict]:
+    """Resolve spec category codes to (category_id, primary, position), de-duped."""
+    out: list[dict] = []
+    seen: set[int] = set()
+    for c in spec["categories"]:
+        cid = cat_by_code.get(c["code"])
+        if cid is None or cid in seen:
+            continue
+        seen.add(cid)
+        out.append({"category_id": cid, "primary_yn": c["primary"], "position": c["position"]})
+    return out
+
+
 def _apply_product(
     product: Product, spec: dict, fields: set[str], cat_by_code: dict[str, int], session: Session
-) -> None:
+) -> bool:
+    """Apply whitelisted fields; return True iff anything actually changed.
+
+    Relationships are only rebuilt when they differ — reassigning identical rows
+    on every re-run both churned the DB and (with a naive counter) reported every
+    product as "updated".
+    """
+    changed = False
     for f in _PRODUCT_SCALARS:
-        if f in fields:
+        if f in fields and getattr(product, f) != spec[f]:
             setattr(product, f, spec[f])
+            changed = True
     if "images" in fields:
-        product.images = [ProductImage(url=u, ord=i) for i, u in enumerate(spec["images"])]
+        desired = spec["images"]
+        if [i.url for i in product.images] != desired:
+            product.images = [ProductImage(url=u, ord=i) for i, u in enumerate(desired)]
+            changed = True
     if "params" in fields:
-        product.params = [
-            ProductParam(name=n, value=v, ord=i) for i, (n, v) in enumerate(spec["params"])
-        ]
+        desired = spec["params"]
+        if [(p.name, p.value) for p in product.params] != desired:
+            product.params = [
+                ProductParam(name=n, value=v, ord=i) for i, (n, v) in enumerate(desired)
+            ]
+            changed = True
     if "categories" in fields:
-        if product.id is not None:  # existing row: clear old links first
-            session.execute(delete(ProductCategory).where(ProductCategory.product_id == product.id))
-        else:
+        desired = _desired_categories(spec, cat_by_code)
+        if product.id is None:
             session.add(product)
             session.flush()  # need product.id for the link rows
-        seen: set[int] = set()
-        for c in spec["categories"]:
-            cid = cat_by_code.get(c["code"])
-            if cid is None or cid in seen:
-                continue
-            seen.add(cid)
-            session.add(
-                ProductCategory(
-                    product_id=product.id,
-                    category_id=cid,
-                    primary_yn=c["primary"],
-                    position=c["position"],
-                )
-            )
+            current: list[dict] = []
+        else:
+            current = [
+                {"category_id": r.category_id, "primary_yn": r.primary_yn, "position": r.position}
+                for r in session.execute(
+                    select(ProductCategory).where(ProductCategory.product_id == product.id)
+                ).scalars()
+            ]
+        # Order-independent compare; position lives inside each row.
+        if sorted(current, key=lambda d: d["category_id"]) != sorted(
+            desired, key=lambda d: d["category_id"]
+        ):
+            session.execute(delete(ProductCategory).where(ProductCategory.product_id == product.id))
+            for c in desired:
+                session.add(ProductCategory(product_id=product.id, **c))
+            changed = True
+    return changed
 
 
 def import_products(session: Session, raw: bytes, whitelist: list[str]) -> dict:
@@ -195,7 +224,7 @@ def import_products(session: Session, raw: bytes, whitelist: list[str]) -> dict:
     }
     all_fields = set(PRODUCT_FIELDS)
     wl = set(whitelist)
-    stats = {"products_seen": 0, "created": 0, "updated": 0, "errors": []}
+    stats = {"products_seen": 0, "created": 0, "updated": 0, "unchanged": 0, "errors": []}
     for spec in parse_products(raw):
         stats["products_seen"] += 1
         try:
@@ -211,9 +240,10 @@ def import_products(session: Session, raw: bytes, whitelist: list[str]) -> dict:
                 _apply_product(product, spec, all_fields, cat_by_code, session)
                 session.add(product)
                 stats["created"] += 1
-            else:
-                _apply_product(existing, spec, wl, cat_by_code, session)
+            elif _apply_product(existing, spec, wl, cat_by_code, session):
                 stats["updated"] += 1
+            else:
+                stats["unchanged"] += 1
             session.flush()
         except Exception as exc:  # per-row isolation: one bad row never aborts the run
             stats["errors"].append({"code": spec["code"], "error": str(exc)})
@@ -223,9 +253,12 @@ def import_products(session: Session, raw: bytes, whitelist: list[str]) -> dict:
 def import_categories(session: Session, raw: bytes, whitelist: list[str]) -> dict:
     wl = set(whitelist)
     specs = parse_categories(raw)
-    stats = {"categories_seen": len(specs), "created": 0, "updated": 0, "errors": []}
+    stats = {"categories_seen": len(specs), "created": 0, "updated": 0, "unchanged": 0, "errors": []}
     by_ext: dict[str, Category] = {}
     created_codes: set[str] = set()
+    # True iff an *existing* category actually changed (across both passes). Only
+    # existing codes land here; created ones are counted separately.
+    existing_changed: dict[str, bool] = {}
 
     # Pass 1: upsert by upgates_code (scalars).
     for spec in specs:
@@ -244,13 +277,17 @@ def import_categories(session: Session, raw: bytes, whitelist: list[str]) -> dic
                 stats["created"] += 1
                 created_codes.add(spec["code"])
             else:
-                if "name" in wl and spec["name"]:
+                changed = False
+                if "name" in wl and spec["name"] and cat.name != spec["name"]:
                     cat.name = spec["name"]
-                if "seo_title" in wl:
+                    changed = True
+                if "seo_title" in wl and cat.seo_title != spec["seo_title"]:
                     cat.seo_title = spec["seo_title"]
-                if "seo_description" in wl:
+                    changed = True
+                if "seo_description" in wl and cat.seo_description != spec["seo_description"]:
                     cat.seo_description = spec["seo_description"]
-                stats["updated"] += 1
+                    changed = True
+                existing_changed[spec["code"]] = changed
             if spec["ext_id"]:
                 by_ext[spec["ext_id"]] = cat
         except Exception as exc:
@@ -265,6 +302,13 @@ def import_categories(session: Session, raw: bytes, whitelist: list[str]) -> dic
             continue
         if "parent" in wl or spec["code"] in created_codes:
             parent = by_ext.get(spec["parent_ext_id"]) if spec["parent_ext_id"] else None
-            cat.parent_id = parent.id if parent else None
+            new_parent_id = parent.id if parent else None
+            if cat.parent_id != new_parent_id:
+                cat.parent_id = new_parent_id
+                if spec["code"] not in created_codes:
+                    existing_changed[spec["code"]] = True
     session.flush()
+
+    stats["updated"] = sum(1 for v in existing_changed.values() if v)
+    stats["unchanged"] = sum(1 for v in existing_changed.values() if not v)
     return stats

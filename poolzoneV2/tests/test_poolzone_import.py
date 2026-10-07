@@ -86,9 +86,28 @@ def test_product_update_respects_whitelist(db_session):
     p = db_session.query(Product).filter_by(code="AK1").one()
     p.title = "OWNER EDIT"
     db_session.flush()
-    # Re-run with title NOT whitelisted but stock whitelisted.
-    stats = poolzone.import_products(db_session, PRODUCTS_XML, ["stock"])
+    # Re-run with title NOT whitelisted but stock whitelisted, and stock actually changed.
+    changed_xml = PRODUCTS_XML.replace(b"<STOCK>7</STOCK>", b"<STOCK>99</STOCK>")
+    stats = poolzone.import_products(db_session, changed_xml, ["stock"])
     assert stats["updated"] == 1
+    assert stats["unchanged"] == 0
     p = db_session.query(Product).filter_by(code="AK1").one()
     assert p.title == "OWNER EDIT"  # not overwritten
-    assert p.stock == 7  # whitelisted
+    assert p.stock == 99  # whitelisted
+
+
+def test_resync_same_feed_counts_unchanged_not_updated(db_session):
+    # Re-running the identical feed must report unchanged, not inflate "updated".
+    _run_cats(db_session, poolzone.CATEGORY_FIELDS)
+    poolzone.import_products(db_session, PRODUCTS_XML, poolzone.PRODUCT_FIELDS)
+
+    stats = poolzone.import_products(db_session, PRODUCTS_XML, poolzone.PRODUCT_FIELDS)
+    assert stats["created"] == 0
+    assert stats["updated"] == 0
+    assert stats["unchanged"] == 1
+
+    # Categories too: second identical run touches nothing.
+    cat_stats = _run_cats(db_session, poolzone.CATEGORY_FIELDS)
+    assert cat_stats["created"] == 0
+    assert cat_stats["updated"] == 0
+    assert cat_stats["unchanged"] == 2

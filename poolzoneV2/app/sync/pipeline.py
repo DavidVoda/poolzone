@@ -41,7 +41,7 @@ def run_sync(session: Session, supplier: Supplier, parsed_products: list[ParsedP
     Pure upsert — the caller owns the JobRun (via job_run) so the 'running' row is visible
     for the whole operation, including the fetch/parse that happens before this.
     """
-    stats = {"products_seen": 0, "created": 0, "updated": 0, "errors": []}
+    stats = {"products_seen": 0, "created": 0, "updated": 0, "unchanged": 0, "errors": []}
     whitelist = supplier.update_whitelist or ["stock", "price_purchase", "availability"]
 
     for parsed in parsed_products:
@@ -59,7 +59,13 @@ def run_sync(session: Session, supplier: Supplier, parsed_products: list[ParsedP
                 stats["created"] += 1
             else:
                 _apply_update(existing, parsed, whitelist)
-                stats["updated"] += 1
+                # Setting a column to its current value leaves it un-dirty, so
+                # is_modified is False for a re-run of the same feed → count as
+                # unchanged instead of inflating "updated".
+                if session.is_modified(existing):
+                    stats["updated"] += 1
+                else:
+                    stats["unchanged"] += 1
         except Exception as exc:  # per-product isolation: one bad row never aborts the run
             stats["errors"].append({"code": parsed.code, "error": str(exc)})
 

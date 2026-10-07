@@ -19,6 +19,12 @@ Clean-restart rebuild. See `../docs/superpowers/specs/2026-07-02-poolzone-middle
     ./.venv/bin/poolz sync pooltechnika      # after seeding a suppliers row
     ./.venv/bin/poolz export --out-dir feeds
 
+## Run everything (DB + API + frontend)
+
+    make dev        # DB up, then API :8000 + Vite :5173 together (Ctrl-C stops both)
+
+Pieces alone: `make db`, `make api`, `make web`.
+
 ## Run the admin
 
     # API (serves built SPA if frontend/dist exists)

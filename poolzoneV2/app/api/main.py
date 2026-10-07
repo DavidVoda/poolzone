@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 
+from app.auth import require_user
 from app.api.routers import (
+    auth,
     categories,
     feature_requests,
     feeds,
@@ -15,25 +18,44 @@ from app.api.routers import (
     pricing,
     products,
     suppliers,
+    users,
 )
+from app.settings import IS_PRODUCTION, SECRET_KEY
 
 app = FastAPI(title="Poolzone admin")
 
+# Signed HTTP-only session cookie (holds only the user id). https_only in prod.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
+    https_only=IS_PRODUCTION,
+    same_site="lax",
+)
+
 # Vite dev server runs on 5173; in production the SPA is served from the same origin.
+# allow_credentials so the session cookie rides cross-origin during dev.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(products.router)
-app.include_router(pricing.router)
-app.include_router(jobs.router)
-app.include_router(categories.router)
-app.include_router(suppliers.router)
-app.include_router(feeds.router)
-app.include_router(feature_requests.router)
+# Auth endpoints stay open (you must reach login without a session).
+app.include_router(auth.router)
+
+# Everything else requires a logged-in user in production; dev/localhost is open
+# (require_user is a no-op unless POOLZONE_ENV=production).
+_guard = [Depends(require_user)]
+app.include_router(products.router, dependencies=_guard)
+app.include_router(pricing.router, dependencies=_guard)
+app.include_router(jobs.router, dependencies=_guard)
+app.include_router(categories.router, dependencies=_guard)
+app.include_router(suppliers.router, dependencies=_guard)
+app.include_router(feeds.router, dependencies=_guard)
+app.include_router(feature_requests.router, dependencies=_guard)
+app.include_router(users.router)  # already gated by require_admin
 
 
 @app.get("/api/health")

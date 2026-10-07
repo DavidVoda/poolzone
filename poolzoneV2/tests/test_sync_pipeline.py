@@ -80,3 +80,20 @@ def test_run_returns_stats_and_stamps_supplier(db_session):
     assert stats["products_seen"] == 2
     assert stats["created"] == 2
     assert supplier.last_synced_at is not None
+
+
+def test_resync_same_feed_counts_unchanged_not_updated(db_session):
+    # Re-running the identical feed must NOT report every product as "updated"
+    # (regression: it used to count every existing row regardless of change).
+    supplier = _supplier(db_session)
+    run_sync(db_session, supplier, [_parsed("AK1"), _parsed("AK2")])
+
+    stats = run_sync(db_session, supplier, [_parsed("AK1"), _parsed("AK2")])
+    assert stats["created"] == 0
+    assert stats["updated"] == 0
+    assert stats["unchanged"] == 2
+
+    # A real whitelisted change flips it back to updated.
+    stats = run_sync(db_session, supplier, [_parsed("AK1", stock=999), _parsed("AK2")])
+    assert stats["updated"] == 1
+    assert stats["unchanged"] == 1

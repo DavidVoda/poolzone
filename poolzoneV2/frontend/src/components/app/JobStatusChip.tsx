@@ -16,7 +16,7 @@ export function JobStatusChip() {
   const job = data?.[0]
   if (!job) return null
   return (
-    <div className="flex items-center gap-2 border-t px-4 py-3 text-xs text-muted-foreground">
+    <div className="flex items-center gap-2 border-t border-sidebar-border px-4 py-3 text-xs text-sidebar-foreground/70">
       <StatusBadge status={job.status} />
       <span>
         {job.kind} · {formatDateTime(job.started_at)}

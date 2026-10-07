@@ -214,3 +214,47 @@ class Transition(BaseModel):
     execution_log: str | None = None
     review_note: str | None = None
     error: str | None = None
+
+
+# --- auth / users -----------------------------------------------------------
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    name: str
+    role: str
+    active: bool
+    created_at: datetime
+    last_active_at: datetime | None
+
+
+class UserCreate(BaseModel):
+    email: str
+    name: str
+    password: str
+    role: str = "member"  # admin | member
+
+
+class UserPatch(BaseModel):
+    name: str | None = None
+    role: str | None = None
+    active: bool | None = None
+
+
+class PasswordSet(BaseModel):
+    password: str
+
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+
+class MeOut(BaseModel):
+    """Drives the SPA guard: whether login is required, and who (if anyone) is in."""
+
+    auth_required: bool
+    user: UserOut | None
