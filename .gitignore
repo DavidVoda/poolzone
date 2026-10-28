@@ -179,5 +179,6 @@ cython_debug/
 # pricing tool - generated data
 pricing/pricing_app/data/export.csv
 pricing/pricing_app/data/pricing_analysis.csv
-pricing/pricing_app/data/pricing_dataset.csvpoolzoneV2/.venv/
+pricing/pricing_app/data/pricing_dataset.csv
+poolzoneV2/.venv/
 .rostistate
