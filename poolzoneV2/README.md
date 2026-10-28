@@ -55,3 +55,16 @@ Plans 1–4 complete (foundation + sync, pricing + export, API + React admin,
 data bootstrap). DB holds real data: 143 categories, 3789 products.
 Not done (not V1-blocking): new publish path (Upgates API), APScheduler
 wiring, Categories admin page, cut-over/archiving of old scripts.
+
+## Deploy (Rosti Stacks)
+
+Single Docker image (SPA built in, migrations run on start) + Postgres, see
+`Dockerfile` / `docker-compose.rosti.yml`. Docker Desktop must be running.
+
+    ./deploy.sh init                       # once: login, create stack, write secrets, first deploy
+    ./deploy.sh                            # every release
+    ./deploy.sh seed-db                    # once: copy local DB to prod (overwrites!)
+    ./deploy.sh admin you@x.cz 'password'  # first admin login
+    ./deploy.sh logs
+
+Secrets (`POSTGRES_PASSWORD`, `POOLZONE_SECRET_KEY`) live only on the VM in `/srv/stack/.env`.

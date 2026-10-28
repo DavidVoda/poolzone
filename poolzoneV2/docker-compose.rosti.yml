@@ -1,0 +1,27 @@
+# Production stack on Rosti. Secrets live in secrets.env next to this file ON THE STACK
+# (/srv/stack/secrets.env), created once by `./deploy.sh init` — never committed.
+services:
+  app:
+    image: app:latest
+    restart: unless-stopped
+    ports:
+      - "80:8000"
+    env_file: secrets.env
+    environment:
+      POOLZONE_ENV: production
+    volumes:
+      - ./data/feeds:/app/feeds
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file: secrets.env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      retries: 10
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
