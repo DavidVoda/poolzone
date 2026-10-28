@@ -1,207 +1,796 @@
 import requests
 import xml.etree.ElementTree as ET
 from urllib.parse import urlparse
-from unidecode import unidecode
 import pandas as pd
 
-# Načtení Excel souboru pro cenotvorbu
-cenotvorba_df = pd.read_excel('produkty_cenotvorba.xlsx')
 
-# Kód produktů, na které neplatí sleva a mají svůj vlastní koeficient
-codes = {}
-for index, row in cenotvorba_df.iterrows():
-    product_code = str(row['Kód']).strip()
-    coefficient = float(row['Koeficient'])
-    codes[product_code] = coefficient
+# ============================================================
+# NASTAVENÍ
+# ============================================================
 
-# Načtení Excel souboru a odstranění prázdných řádků
-poolzone_df = pd.read_excel('poolzone_categories.xlsx')
+FEED_URL = "https://www.pooltechnika.cz/feed/heureka?token=5f0dac7b23e1d&customer=231"
 
-# URL feedu
-feed_url = "https://www.pooltechnika.cz/feed/heureka?token=5f0dac7b23e1d&customer=231"
+PRICING_FILE = "produkty_cenotvorba.xlsx"
+CATEGORIES_FILE = "poolzone_categories.xlsx"
 
-# Extrakce domény z feedu
-parsed_url = urlparse(feed_url)
-hostname = parsed_url.netloc
-domain_name = hostname.split('.')[1]
+OUTPUT_FILE = "poolzone_products.xml"
+PRICE_REPORT_FILE = "price_changes.csv"
 
-# Stáhnutí feedu
-response = requests.get(feed_url)
-if response.status_code == 200:
-    feed_data = response.content
-    print(f"Feed z {hostname} úspěšně načten.")
-else:
-    print(f"Chyba při načítání feedu, status code: {response.status_code}.")
-    exit()
+# Standardní požadovaná marže pro produkty bez individuálního pravidla
+STANDARD_MARGIN = 0.35
 
-# Načtení feedu
-root = ET.fromstring(feed_data)
 
-# PRODUCTS
-# Vytvoření kořenového elementu pro výstupní XML
-products = ET.Element('PRODUCTS', version='1.0')
+# ============================================================
+# POMOCNÉ FUNKCE
+# ============================================================
 
-# Funkce pro vytvoření sub-elementů s textem
+def parse_price(value):
+    """
+    Bezpečně převede cenu z XML na float.
+    Podporuje desetinnou čárku i tečku.
+    """
+    if value is None:
+        return None
+
+    value = str(value).strip()
+
+    if not value:
+        return None
+
+    try:
+        return float(value.replace(",", "."))
+    except (ValueError, TypeError):
+        return None
+
+
 def create_sub_element(parent, tag, text):
+    """
+    Vytvoří XML sub-element.
+    """
     element = ET.SubElement(parent, tag)
     element.text = str(text).strip()
     return element
 
-# Iterace přes každý SHOPITEM v input XML
-for shopitem in root.findall('SHOPITEM'):
-    # Vytvoření elementu PRODUCT
-    product = ET.SubElement(products, 'PRODUCT')
 
-    # Mapování ITEM_ID na CODE
-    item_id = shopitem.find('ITEM_ID')
-    if item_id is not None:
-        create_sub_element(product, 'CODE', item_id.text)
+def get_text(shopitem, tag):
+    """
+    Bezpečně získá text XML elementu.
+    """
+    element = shopitem.find(tag)
 
-    # Mapování PRODUCTNAME na DESCRIPTIONS/DESCRIPTION/TITLE
-    productname = shopitem.find('PRODUCTNAME')
-    if productname is not None:
-        descriptions = ET.SubElement(product, 'DESCRIPTIONS')
-        description = ET.SubElement(descriptions, 'DESCRIPTION', language='cs')
-        create_sub_element(description, 'TITLE', productname.text)
+    if element is None or element.text is None:
+        return None
 
-    # Mapování URL na DESCRIPTIONS/DESCRIPTION/URL
-    url = shopitem.find('URL')
-    if url is not None:
-        if 'descriptions' not in locals():
-            descriptions = ET.SubElement(product, 'DESCRIPTIONS')
-            description = ET.SubElement(descriptions, 'DESCRIPTION', language='cs')
-        create_sub_element(description, 'URL', url.text)
+    return element.text.strip()
 
-    # Mapování IMGURL na IMAGES/IMAGE/URL
-    imgurl = shopitem.find('IMGURL')
-    if imgurl is not None:
-        images = ET.SubElement(product, 'IMAGES')
-        image = ET.SubElement(images, 'IMAGE')
-        create_sub_element(image, 'URL', imgurl.text)
 
-    # Cenotvorba
-    price_vat = shopitem.find('PRICE_VAT')
-    item_id = shopitem.find('ITEM_ID')
-    if price_vat is not None:
-        aseko_margin = 1 / (1 - 0.35)  
-        #výpočet pro doporučenou MOC bez DPH - cena bez dph 1/0.65 - 35% marže
-        aseko_margin2 = 1 / (1 - 0.34)
-        #výpočet pro naši MOC bez DPH - cena bez dph 1/0.66 - zůstane nám 34% marže 
-        others_margin = 1 / (1 - 0.45) 
-        #výpočet pro doporučenou MOC bez DPH - cena bez dph 1/0.55 - 45% marže
-        others_margin2 = 1 / (1 - 0.35) 
-        #výpočet pro naši MOC bez DPH - cena bez dph 1/0.65 - zůstane nám 35% marže
-        tax_rate = 0.21
-        
-        price_vat =  float(price_vat.text.replace(',','.'))
-        #nákupní cena s DPH z feedu, převod na float a nahrazení případné čárky tečkou pro správný výpočet
-        price_purchase = price_vat / (1 + tax_rate)
-        #pooltechnika označuje naši nákupní cenu s DPH jako price_vat, výpočet slouží k získání nákupní ceny bez DPH, která se v elementu PRICE_PURCHASE očekává
+# ============================================================
+# NAČTENÍ EXCELU S INDIVIDUÁLNÍ CENOTVORBOU
+# ============================================================
 
-        if item_id.text.startswith("AK"):
-            if item_id.text in codes:
-                price_without_vat = price_purchase * aseko_margin
-                #výpočet DMOC bez DPH pro produkty Aseko
-                price_without_vat = price_without_vat * codes[item_id.text]
-                #výpočet naší prodejní MOC bez DPH pro produkty Aseko s přihlédnutím k individuálnímu koeficientu z Excelu
+print("Načítám individuální cenotvorbu...")
+
+cenotvorba_df = pd.read_excel(PRICING_FILE)
+
+codes = {}
+
+for _, row in cenotvorba_df.iterrows():
+
+    if pd.isna(row["Kód"]) or pd.isna(row["Koeficient"]):
+        continue
+
+    product_code = str(row["Kód"]).strip()
+
+    try:
+        coefficient = float(row["Koeficient"])
+    except (ValueError, TypeError):
+        print(
+            f"VAROVÁNÍ: Neplatný koeficient pro produkt {product_code}. "
+            f"Řádek ignorován."
+        )
+        continue
+
+    codes[product_code] = coefficient
+
+print(f"Načteno individuálních cenových pravidel: {len(codes)}")
+
+
+# ============================================================
+# NAČTENÍ KATEGORIÍ
+# ============================================================
+
+print("Načítám mapování kategorií...")
+
+poolzone_df = pd.read_excel(CATEGORIES_FILE)
+
+
+# ============================================================
+# STAŽENÍ POOLTECHNIKA FEEDU
+# ============================================================
+
+parsed_url = urlparse(FEED_URL)
+hostname = parsed_url.netloc
+
+print(f"Stahuji feed z {hostname}...")
+
+try:
+    response = requests.get(
+        FEED_URL,
+        timeout=60
+    )
+
+    response.raise_for_status()
+
+except requests.RequestException as e:
+
+    print(f"CHYBA při stahování feedu: {e}")
+    raise SystemExit(1)
+
+
+feed_data = response.content
+
+print(f"Feed z {hostname} úspěšně načten.")
+
+
+# ============================================================
+# PARSOVÁNÍ XML
+# ============================================================
+
+try:
+    root = ET.fromstring(feed_data)
+
+except ET.ParseError as e:
+
+    print(f"CHYBA při parsování XML feedu: {e}")
+    raise SystemExit(1)
+
+
+shopitems = root.findall("SHOPITEM")
+
+print(f"Počet produktů ve feedu: {len(shopitems)}")
+
+
+# ============================================================
+# VÝSTUPNÍ XML
+# ============================================================
+
+products = ET.Element(
+    "PRODUCTS",
+    version="1.0"
+)
+
+
+# ============================================================
+# REPORT CEN
+# ============================================================
+
+price_report = []
+
+stats = {
+    "total": 0,
+    "aseko": 0,
+    "standard_35": 0,
+    "individual": 0,
+    "individual_fallback": 0,
+    "missing_voc": 0,
+    "missing_moc_aseko": 0,
+}
+
+
+# ============================================================
+# ZPRACOVÁNÍ PRODUKTŮ
+# ============================================================
+
+for shopitem in shopitems:
+
+    stats["total"] += 1
+
+    product = ET.SubElement(products, "PRODUCT")
+
+    # --------------------------------------------------------
+    # ZÁKLADNÍ DATA
+    # --------------------------------------------------------
+
+    item_id = get_text(shopitem, "ITEM_ID")
+    productname = get_text(shopitem, "PRODUCTNAME")
+
+    if item_id:
+        create_sub_element(product, "CODE", item_id)
+
+    # --------------------------------------------------------
+    # POPIS / NÁZEV / URL
+    # --------------------------------------------------------
+
+    descriptions = None
+    description = None
+
+    if productname:
+
+        descriptions = ET.SubElement(
+            product,
+            "DESCRIPTIONS"
+        )
+
+        description = ET.SubElement(
+            descriptions,
+            "DESCRIPTION",
+            language="cs"
+        )
+
+        create_sub_element(
+            description,
+            "TITLE",
+            productname
+        )
+
+    url = get_text(shopitem, "URL")
+
+    if url:
+
+        if descriptions is None:
+
+            descriptions = ET.SubElement(
+                product,
+                "DESCRIPTIONS"
+            )
+
+            description = ET.SubElement(
+                descriptions,
+                "DESCRIPTION",
+                language="cs"
+            )
+
+        create_sub_element(
+            description,
+            "URL",
+            url
+        )
+
+    # --------------------------------------------------------
+    # OBRÁZEK
+    # --------------------------------------------------------
+
+    imgurl = get_text(shopitem, "IMGURL")
+
+    if imgurl:
+
+        images = ET.SubElement(
+            product,
+            "IMAGES"
+        )
+
+        image = ET.SubElement(
+            images,
+            "IMAGE"
+        )
+
+        create_sub_element(
+            image,
+            "URL",
+            imgurl
+        )
+
+    # ========================================================
+    # CENOTVORBA
+    # ========================================================
+
+    voc = parse_price(
+        get_text(shopitem, "VOC")
+    )
+
+    voc_vat = parse_price(
+        get_text(shopitem, "VOC_VAT")
+    )
+
+    moc = parse_price(
+        get_text(shopitem, "MOC")
+    )
+
+    moc_vat = parse_price(
+        get_text(shopitem, "MOC_VAT")
+    )
+
+    selling_price = None
+    coefficient = None
+    pricing_method = None
+
+    # --------------------------------------------------------
+    # 1. KONTROLA NÁKUPNÍ CENY
+    # --------------------------------------------------------
+
+    if voc is None or voc <= 0:
+
+        stats["missing_voc"] += 1
+
+        pricing_method = "CHYBÍ VOC - CENA NEIMPORTOVÁNA"
+
+        print(
+            f"VAROVÁNÍ: {item_id} | {productname} | "
+            f"chybí platná VOC. Cena nebude importována."
+        )
+
+    # --------------------------------------------------------
+    # 2. INDIVIDUÁLNÍ KOEFICIENT
+    #
+    # Excel má NEJVYŠŠÍ prioritu.
+    # Platí tedy i pro produkty ASEKO (AK...).
+    # --------------------------------------------------------
+
+    elif item_id in codes:
+
+        coefficient = codes[item_id]
+
+        if moc is not None and moc > 0:
+
+            calculated_price = moc * coefficient
+
+            # Bezpečnost:
+            # Koeficient nikdy nesmí vytvořit cenu
+            # nižší nebo rovnou VOC.
+            if calculated_price <= voc:
+
+                selling_price = voc / (1 - STANDARD_MARGIN)
+
+                pricing_method = (
+                    "INDIVIDUÁLNÍ KOEFICIENT - "
+                    "FALLBACK 35% MARŽE"
+                )
+
+                stats["individual_fallback"] += 1
+
+                print(
+                    f"POZOR: {item_id} | {productname} | "
+                    f"koeficient {coefficient} by vytvořil cenu "
+                    f"{calculated_price:.2f} Kč při VOC "
+                    f"{voc:.2f} Kč. Použita 35% marže."
+                )
+
             else:
-                price_without_vat = price_purchase * aseko_margin2
-                #výpočet naší prodejní MOC bez DPH pro produkty Aseko bez individuálního koeficientu z Excelu, u těchto produktů nám zůstává 34% marže
-        else:        
-            if item_id.text in codes:
-                price_without_vat = price_purchase * others_margin
-                #výpočet DMOC bez DPH pro ostatní produkty
-                price_without_vat = price_without_vat * codes[item_id.text]
-                #výpočet naší prodejní MOC bez DPH pro ostatní produkty s přihlédnutím k individuálnímu koeficientu z Excelu
-            else:
-                price_without_vat = price_purchase * others_margin2
-                #výpočet naší prodejní MOC bez DPH pro ostatní produkty bez individuálního koeficientu z Excelu, u těchto produktů nám zůstává 35% marže
 
+                selling_price = calculated_price
 
-        prices = ET.SubElement(product, 'PRICES')
-        price = ET.SubElement(prices, 'PRICE', language='cs')
-        create_sub_element(price, 'PRICE_PURCHASE', price_purchase) 
-        #nákupní cena bez DPH
-        create_sub_element(price, 'PRICE_COMMON', price_without_vat) 
-        #běžná cena bez DPH
-        price_lists = ET.SubElement(price, 'PRICELISTS')
-        price_list = ET.SubElement(price_lists, 'PRICELIST')
-        create_sub_element(price_list, 'PRICE_ORIGINAL', price_without_vat) 
-        #prodejní cena bez DPH
+                pricing_method = "MOC × INDIVIDUÁLNÍ KOEFICIENT"
 
-    # Mapování CATEGORYTEXT na CATEGORIES/CATEGORY/CODE
-    categorytext = shopitem.find('CATEGORYTEXT')
-    if categorytext is not None:
-        category_value = categorytext.text.strip()
-        categoriesA = ET.SubElement(product, 'CATEGORIES')
+                stats["individual"] += 1
+
+        else:
+
+            # Pokud produkt v Excelu nemá MOC,
+            # použijeme bezpečný fallback 35% marže.
+            selling_price = voc / (1 - STANDARD_MARGIN)
+
+            pricing_method = (
+                "CHYBÍ MOC - FALLBACK 35% MARŽE"
+            )
+
+            stats["individual_fallback"] += 1
+
+            print(
+                f"VAROVÁNÍ: {item_id} | {productname} | "
+                f"produkt má individuální koeficient, ale chybí MOC. "
+                f"Použita 35% marže."
+            )
+
+    # --------------------------------------------------------
+    # 3. ASEKO BEZ INDIVIDUÁLNÍHO KOEFICIENTU
+    #
+    # Produkty AK... bez výjimky v Excelu mají přímo MOC.
+    # --------------------------------------------------------
+
+    elif item_id and item_id.upper().startswith("AK"):
+
+        stats["aseko"] += 1
+
+        if moc is not None and moc > 0:
+
+            selling_price = moc
+
+            pricing_method = "ASEKO - MOC"
+
+        else:
+
+            stats["missing_moc_aseko"] += 1
+
+            pricing_method = "ASEKO - CHYBÍ MOC"
+
+            print(
+                f"VAROVÁNÍ: ASEKO produkt {item_id} | "
+                f"{productname} nemá platnou MOC. "
+                f"Prodejní cena nebude importována."
+            )
+
+    # --------------------------------------------------------
+    # 4. STANDARDNÍ PRODUKT
+    #
+    # VOC / 0,65 = přesně 35% marže.
+    # --------------------------------------------------------
+
+    else:
+
+        selling_price = voc / (1 - STANDARD_MARGIN)
+
+        pricing_method = "STANDARD 35% MARŽE"
+
+        stats["standard_35"] += 1
+
+    # --------------------------------------------------------
+    # FINÁLNÍ BEZPEČNOSTNÍ KONTROLA
+    # --------------------------------------------------------
+
+    if selling_price is not None:
+
+        # Absolutní ochrana proti prodeji na/pod nákupkou.
+        if selling_price <= voc:
+
+            print(
+                f"KRITICKÁ OCHRANA: {item_id} | {productname} | "
+                f"výsledná cena {selling_price:.2f} <= VOC "
+                f"{voc:.2f}. Přepínám na 35% marži."
+            )
+
+            selling_price = voc / (1 - STANDARD_MARGIN)
+
+            pricing_method += " | SAFETY 35%"
+
+        selling_price = round(
+            selling_price,
+            2
+        )
+
+        # ----------------------------------------------------
+        # XML CENY
+        # ----------------------------------------------------
+
+        prices = ET.SubElement(
+            product,
+            "PRICES"
+        )
+
+        price = ET.SubElement(
+            prices,
+            "PRICE",
+            language="cs"
+        )
+
+        # Aktuální nákupní cena bez DPH z Pooltechniky
+        create_sub_element(
+            price,
+            "PRICE_PURCHASE",
+            f"{voc:.2f}"
+        )
+
+        # Běžná prodejní cena bez DPH
+        create_sub_element(
+            price,
+            "PRICE_COMMON",
+            f"{selling_price:.2f}"
+        )
+
+        price_lists = ET.SubElement(
+            price,
+            "PRICELISTS"
+        )
+
+        price_list = ET.SubElement(
+            price_lists,
+            "PRICELIST"
+        )
+
+        # Prodejní cena bez DPH
+        create_sub_element(
+            price_list,
+            "PRICE_ORIGINAL",
+            f"{selling_price:.2f}"
+        )
+
+    # --------------------------------------------------------
+    # REPORT CEN
+    # --------------------------------------------------------
+
+    margin = None
+
+    if (
+        selling_price is not None
+        and selling_price > 0
+        and voc is not None
+    ):
+
+        margin = (
+            (selling_price - voc)
+            / selling_price
+        ) * 100
+
+    price_report.append({
+        "Kod": item_id,
+        "Produkt": productname,
+        "VOC_bez_DPH": voc,
+        "VOC_s_DPH": voc_vat,
+        "MOC_bez_DPH": moc,
+        "MOC_s_DPH": moc_vat,
+        "Koeficient": coefficient,
+        "Nova_cena_bez_DPH": selling_price,
+        "Nova_cena_s_DPH":
+            round(selling_price * 1.21, 2)
+            if selling_price is not None
+            else None,
+        "Marze_procent":
+            round(margin, 2)
+            if margin is not None
+            else None,
+        "Metoda": pricing_method,
+    })
+
+    # ========================================================
+    # KATEGORIE
+    # ========================================================
+
+    categorytext = get_text(
+        shopitem,
+        "CATEGORYTEXT"
+    )
+
+    if categorytext:
+
+        category_value = categorytext.strip()
+
+        categoriesA = ET.SubElement(
+            product,
+            "CATEGORIES"
+        )
 
         new_code = None
         parent_category = None
-        for index, row in poolzone_df.iterrows():
-            ids = row['Pooltechnika ID kategorie']
-            pool_ids = str(ids).split(';') if ids else []
+
+        for _, row in poolzone_df.iterrows():
+
+            ids = row["Pooltechnika ID kategorie"]
+
+            if pd.isna(ids):
+                continue
+
+            pool_ids = str(ids).split(";")
+
+            pool_ids = [
+                x.strip()
+                for x in pool_ids
+            ]
+
             if category_value in pool_ids:
-                new_code = row['Kód kategorie']
-                parent_category = row['ID nadřazené kategorie']
+
+                new_code = row["Kód kategorie"]
+
+                parent_category = row[
+                    "ID nadřazené kategorie"
+                ]
+
                 break
 
         if new_code:
-            category = ET.SubElement(categoriesA, 'CATEGORY')
-            create_sub_element(category, 'CODE', new_code)
-            create_sub_element(category, 'PRIMARY_YN', 'true')
 
-        # Iterativně přidat nadřazené kategorie
-        while parent_category:
+            category = ET.SubElement(
+                categoriesA,
+                "CATEGORY"
+            )
+
+            create_sub_element(
+                category,
+                "CODE",
+                new_code
+            )
+
+            create_sub_element(
+                category,
+                "PRIMARY_YN",
+                "true"
+            )
+
+        # ----------------------------------------------------
+        # NADŘAZENÉ KATEGORIE
+        # ----------------------------------------------------
+
+        while (
+            parent_category is not None
+            and not pd.isna(parent_category)
+        ):
+
             new_code_sup = None
             next_parent_category = None
 
-            for index, row in poolzone_df.iterrows():
-                if row['ID kategorie'] == parent_category:
-                    new_code_sup = row['Kód kategorie']
-                    next_parent_category = row['ID nadřazené kategorie']
+            for _, row in poolzone_df.iterrows():
+
+                if (
+                    row["ID kategorie"]
+                    == parent_category
+                ):
+
+                    new_code_sup = row[
+                        "Kód kategorie"
+                    ]
+
+                    next_parent_category = row[
+                        "ID nadřazené kategorie"
+                    ]
+
                     break
 
             if new_code_sup:
-                category_parent = ET.SubElement(categoriesA, 'CATEGORY')
-                create_sub_element(category_parent, 'CODE', new_code_sup)
-                create_sub_element(category_parent, 'PRIMARY_YN', 'false')
 
-            # Přejít na další nadřazenou kategorii
+                category_parent = ET.SubElement(
+                    categoriesA,
+                    "CATEGORY"
+                )
+
+                create_sub_element(
+                    category_parent,
+                    "CODE",
+                    new_code_sup
+                )
+
+                create_sub_element(
+                    category_parent,
+                    "PRIMARY_YN",
+                    "false"
+                )
+
             parent_category = next_parent_category
 
-    # Mapování EAN na EAN
-    # Po konzultaci s Jonášem bude vždy prázdný, protože vyplněný EAN rozbíjí srovnávače (Google Merchant, Zbozi.cz atd.)
-    ean = shopitem.find('EAN')
-    if ean is not None:
-        create_sub_element(product, 'EAN', '')
+    # ========================================================
+    # EAN
+    # ========================================================
 
-    # Mapování EAN na SUPPLIER_CODE
-    if ean is not None:
-        create_sub_element(product, 'SUPPLIER_CODE', ean.text)
+    # EAN z Pooltechniky záměrně NEPOSÍLÁME jako EAN,
+    # protože Pooltechnika zde může mít neplatné hodnoty.
+    # Původní hodnotu ale používáme jako SUPPLIER_CODE.
 
-    # Mapování stock_quantity na STOCK
-    stock_quantity = shopitem.find('stock_quantity')
+    ean = get_text(
+        shopitem,
+        "EAN"
+    )
+
+    if ean is not None:
+
+        create_sub_element(
+            product,
+            "EAN",
+            ""
+        )
+
+        create_sub_element(
+            product,
+            "SUPPLIER_CODE",
+            ean
+        )
+
+    # ========================================================
+    # SKLAD
+    # ========================================================
+
+    stock_quantity = get_text(
+        shopitem,
+        "stock_quantity"
+    )
+
     if stock_quantity is not None:
-        stock = ET.SubElement(product, 'STOCK')
-        stock.text = stock_quantity.text
 
-    # Mapování PARAM s VAL na WEIGHT
-    # V PARAM by měl být vždy jen jeden a v něm PARAM_NAME "Hmotnost", takže můžeme přímo hledat tento PARAM a jeho VAL pro vytvoření elementu WEIGHT
-    # Pokud by bylo více PARAM, tak budeme muset upravit logiku, aby hledala konkrétně ten s PARAM_NAME "Hmotnost" - případně další
-    # Hmotnost chodí v gramech a má být v gramech, je ale potřeba odstranit jednotku "g" a případné mezery, aby zůstalo jen číslo
-    for param in shopitem.findall('PARAM'):
-        param_name = param.find('PARAM_NAME')
-        val = param.find('VAL')
+        stock = ET.SubElement(
+            product,
+            "STOCK"
+        )
 
-        if param_name is not None and val is not None:
+        stock.text = stock_quantity
+
+    # ========================================================
+    # HMOTNOST
+    # ========================================================
+
+    for param in shopitem.findall("PARAM"):
+
+        param_name = param.find(
+            "PARAM_NAME"
+        )
+
+        val = param.find(
+            "VAL"
+        )
+
+        if (
+            param_name is not None
+            and param_name.text is not None
+            and val is not None
+            and val.text is not None
+        ):
+
             if param_name.text.strip() == "Hmotnost":
-                weight_value = val.text.strip().replace('g', '').replace(' ', '')
-                create_sub_element(product, 'WEIGHT', weight_value)
-                break  # máme → končíme
 
-# Zápis výstupního XML do souboru
-output_file = 'poolzone_products.xml'
+                weight_value = (
+                    val.text
+                    .strip()
+                    .replace("g", "")
+                    .replace(" ", "")
+                )
+
+                create_sub_element(
+                    product,
+                    "WEIGHT",
+                    weight_value
+                )
+
+                break
+
+
+# ============================================================
+# ULOŽENÍ XML
+# ============================================================
+
 tree = ET.ElementTree(products)
-tree.write(output_file, encoding='utf-8', xml_declaration=True)
 
-print(f'XML soubor pro import produktů byl úspěšně vytvořen. Výstupní soubor XML: {output_file}')
+tree.write(
+    OUTPUT_FILE,
+    encoding="utf-8",
+    xml_declaration=True
+)
+
+print("")
+print(
+    f"XML soubor vytvořen: {OUTPUT_FILE}"
+)
+
+
+# ============================================================
+# ULOŽENÍ KONTROLNÍHO REPORTU
+# ============================================================
+
+report_df = pd.DataFrame(
+    price_report
+)
+
+report_df.to_csv(
+    PRICE_REPORT_FILE,
+    index=False,
+    encoding="utf-8-sig",
+    sep=";"
+)
+
+print(
+    f"Report cen vytvořen: {PRICE_REPORT_FILE}"
+)
+
+
+# ============================================================
+# STATISTIKY
+# ============================================================
+
+print("")
+print("============================================")
+print("SOUHRN CENOTVORBY")
+print("============================================")
+
+print(
+    f"Produktů celkem:              {stats['total']}"
+)
+
+print(
+    f"ASEKO bez výjimky → MOC:      {stats['aseko']}"
+)
+
+print(
+    f"Standard → 35% marže:         {stats['standard_35']}"
+)
+
+print(
+    f"Individuální koeficient:      {stats['individual']}"
+)
+
+print(
+    f"Fallback individuálních:      {stats['individual_fallback']}"
+)
+
+print(
+    f"Chybějící VOC:                {stats['missing_voc']}"
+)
+
+print(
+    f"ASEKO bez MOC:                {stats['missing_moc_aseko']}"
+)
+
+print("============================================")
